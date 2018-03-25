@@ -40,6 +40,13 @@ class ActivityPubActorAction extends ManagedAction
         $profile = $user->getProfile();
         $url = $profile->profileurl;
 
+        try {
+          $avatar = $profile->getAvatar(AVATAR_PROFILE_SIZE)->displayUrl();
+        } catch (NoAvatarException $e) {
+          // TODO: fallback to current theme default avatar
+          $avatar = null;
+        }
+
         $res = [
           '@context'          => [
             "https://www.w3.org/ns/activitystreams",
@@ -62,7 +69,7 @@ class ActivityPubActorAction extends ManagedAction
             'type'   => 'Image',
             'width'  => 96,
             'height' => 96,
-            'url'    => $profile->getAvatar(AVATAR_PROFILE_SIZE)->displayUrl()
+            'url'    => $avatar
           ]
         ];
 
