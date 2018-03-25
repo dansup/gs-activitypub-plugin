@@ -54,11 +54,16 @@ class ActivityPubActorAction extends ManagedAction
           'inbox'             => null,
           'outbox'            => null,
           'liked'             => "{$url}/favorites",
-          'featured'          => null,
           'preferredUsername' => $user->nickname,
           'name'              => $user->nickname,
           'summary'           => $profile->bio,
-          'url'               => $url
+          'url'               => $url,
+          'icon'              => [
+            'type'   => 'Image',
+            'width'  => 96,
+            'height' => 96,
+            'url'    => $profile->getAvatar(AVATAR_PROFILE_SIZE)->displayUrl()
+          ]
         ];
 
         header('Content-Type: application/json');
