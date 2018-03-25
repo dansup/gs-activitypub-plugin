@@ -34,20 +34,29 @@ class ActivityPubActorAction extends ManagedAction
     protected $needLogin = false;
     protected $canPost   = true;
 
-    protected $user = false;
-
     protected function handle()
     {
-        $this->user = User::getByID($this->trimmed('id'));
+        $user = User::getByID($this->trimmed('id'));
+        $profile = $user->getProfile();
 
         $res = [
           '@context' => ["https://www.w3.org/ns/activitystreams"],
-          'id' => $this->user->uri,
-          'type' => 'Person'
-
+          'id' => $profile->profileurl,
+          'type' => 'Person',
+          'following' => null,
+          'followers' => null,
+          'inbox'     => null,
+          'outbox'    => null,
+          'liked'     => null,
+          'featured'  => null,
+          'preferredUsername' => $user->nickname,
+          'name'      => $user->nickname,
+          'summary'   => $profile->bio,
+          'url'   => $profile->profileurl
         ];
 
         header('Content-Type: application/json');
+        
         echo json_encode($res, JSON_PRETTY_PRINT);
     }
 }
