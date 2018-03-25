@@ -38,21 +38,27 @@ class ActivityPubActorAction extends ManagedAction
     {
         $user = User::getByID($this->trimmed('id'));
         $profile = $user->getProfile();
+        $url = $profile->profileurl;
 
         $res = [
-          '@context'          => ["https://www.w3.org/ns/activitystreams"],
-          'id'                => $profile->profileurl,
+          '@context'          => [
+            "https://www.w3.org/ns/activitystreams",
+            [
+              "@language" => "en"
+            ]
+          ],
+          'id'                => $url,
           'type'              => 'Person',
-          'following'         => null,
-          'followers'         => null,
+          'following'         => "{$url}/subscriptions",
+          'followers'         => "{$url}/subscribers",
           'inbox'             => null,
           'outbox'            => null,
-          'liked'             => null,
+          'liked'             => "{$url}/favorites",
           'featured'          => null,
           'preferredUsername' => $user->nickname,
           'name'              => $user->nickname,
           'summary'           => $profile->bio,
-          'url'               => $profile->profileurl
+          'url'               => $url
         ];
 
         header('Content-Type: application/json');
