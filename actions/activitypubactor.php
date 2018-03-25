@@ -40,23 +40,23 @@ class ActivityPubActorAction extends ManagedAction
         $profile = $user->getProfile();
 
         $res = [
-          '@context' => ["https://www.w3.org/ns/activitystreams"],
-          'id' => $profile->profileurl,
-          'type' => 'Person',
-          'following' => null,
-          'followers' => null,
-          'inbox'     => null,
-          'outbox'    => null,
-          'liked'     => null,
-          'featured'  => null,
+          '@context'          => ["https://www.w3.org/ns/activitystreams"],
+          'id'                => $profile->profileurl,
+          'type'              => 'Person',
+          'following'         => null,
+          'followers'         => null,
+          'inbox'             => null,
+          'outbox'            => null,
+          'liked'             => null,
+          'featured'          => null,
           'preferredUsername' => $user->nickname,
-          'name'      => $user->nickname,
-          'summary'   => $profile->bio,
-          'url'   => $profile->profileurl
+          'name'              => $user->nickname,
+          'summary'           => $profile->bio,
+          'url'               => $profile->profileurl
         ];
 
         header('Content-Type: application/json');
-        
+
         echo json_encode($res, JSON_PRETTY_PRINT);
     }
 }
