@@ -40,12 +40,7 @@ class ActivityPubActorAction extends ManagedAction
         $profile = $user->getProfile();
         $url = $profile->profileurl;
 
-        try {
-          $avatar = $profile->getAvatar(AVATAR_PROFILE_SIZE)->displayUrl();
-        } catch (NoAvatarException $e) {
-          // TODO: fallback to current theme default avatar
-          $avatar = null;
-        }
+        $avatar = $profile->avatarUrl(AVATAR_PROFILE_SIZE);
 
         $res = [
           '@context'          => [
