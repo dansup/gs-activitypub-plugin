@@ -22,6 +22,7 @@
  * @category  Plugin
  * @package   GNUsocial
  * @author    Daniel Supernault <danielsupernault@gmail.com>
+ * @author    Diogo Cordeiro <diogo@fc.up.pt>
  * @copyright 2015 Free Software Foundaction, Inc.
  * @license   http://www.fsf.org/licensing/licenses/agpl-3.0.html GNU Affero General Public License version 3.0
  * @link      https://gnu.io/social
@@ -29,18 +30,23 @@
 
 if (!defined('GNUSOCIAL')) { exit(1); }
 
-class ActivityPubActorAction extends ManagedAction
+class apActorProfileAction extends ManagedAction
 {
     protected $needLogin = false;
     protected $canPost   = true;
 
     protected function handle()
     {
-        $user = User::getByID($this->trimmed('id'));
-        $profile = $user->getProfile();
-        $url = $profile->profileurl;
+        $nickname = $this->trimmed('nickname');
+        try {
+          $user = User::getByNickname($nickname);
+          $profile = $user->getProfile();
+          $url = $profile->profileurl;
+        } catch (Exception $e) {
+          throw new \Exception('Invalid username');
+        }
 
-        $avatar = $profile->avatarUrl(AVATAR_PROFILE_SIZE);
+        $avatar_url = $profile->avatarUrl(AVATAR_PROFILE_SIZE);
 
         $res = [
           '@context'          => [
@@ -49,27 +55,29 @@ class ActivityPubActorAction extends ManagedAction
               "@language" => "en"
             ]
           ],
-          'id'                => $url,
+          'id'                => $user->getID(),
           'type'              => 'Person',
-          'following'         => "{$url}/subscriptions",
+          'username'          => $user->nickname,
+          'inbox'             => "{$url}/inbox.json",
+          'outbox'            => "{$url}/outbox.json",
+          'acct'              => null,                       // TODO: Equals `username` for local users, includes `@domain` for remote ones
+          'display_name'      => $profile->fullname,
           'followers'         => "{$url}/subscribers",
-          'inbox'             => null,
-          'outbox'            => null,
-          'liked'             => "{$url}/favorites",
-          'preferredUsername' => $user->nickname,
-          'name'              => $user->nickname,
+          'following'         => "{$url}/subscriptions",
+          'liked'             => "{$url}/liked.json",
+          'liked_count'       => Fave::countByProfile ($profile),
           'summary'           => $profile->bio,
           'url'               => $url,
-          'icon'              => [
+          'avatar'            => [
             'type'   => 'Image',
             'width'  => 96,
             'height' => 96,
-            'url'    => $avatar
+            'url'    => $avatar_url
           ]
         ];
 
         header('Content-Type: application/json');
 
-        echo json_encode($res, JSON_PRETTY_PRINT);
+        echo json_encode($res, isset($_GET["pretty"]) ? JSON_PRETTY_PRINT : null);
     }
 }
