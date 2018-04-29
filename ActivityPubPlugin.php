@@ -37,6 +37,10 @@ class ActivityPubPlugin extends Plugin
         $m->connect('api/statuses/user_timeline/:id.ap',
                     ['action' => 'activitypubactor'],
                     ['id'     => '[0-9]+']);
+
+        $m->connect(':nickname/outbox.json',
+                    ['action' => 'actoroutbox'],
+                    ['nickname'     => Nickname::DISPLAY_FMT]);
     }
 
     public function onPluginVersion(array &$versions)
