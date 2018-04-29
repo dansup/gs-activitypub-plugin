@@ -48,7 +48,7 @@ class ActivityPubPlugin extends Plugin
     {
         $versions[] = [ 'name' => 'ActivityPub',
                         'version' => GNUSOCIAL_VERSION,
-                        'author' => 'Daniel Supernault',
+                        'author' => 'Daniel Supernault, Diogo Cordeiro',
                         'homepage' => 'https://www.gnu.org/software/social/',
                         'rawdescription' =>
                         // Todo: Translation
