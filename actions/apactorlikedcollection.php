@@ -21,6 +21,7 @@
  *
  * @category  Plugin
  * @package   GNUsocial
+ * @author    Diogo Cordeiro <diogo@fc.up.pt>
  * @author    Daniel Supernault <danielsupernault@gmail.com>
  * @copyright 2015 Free Software Foundaction, Inc.
  * @license   http://www.fsf.org/licensing/licenses/agpl-3.0.html GNU Affero General Public License version 3.0
@@ -29,19 +30,33 @@
 
 if (!defined('GNUSOCIAL')) { exit(1); }
 
-class ActivityPubActorAction extends ManagedAction
+class apActorLikedCollectionAction extends ManagedAction
 {
     protected $needLogin = false;
     protected $canPost   = true;
 
     protected function handle()
     {
-        $user = User::getByID($this->trimmed('id'));
-        $profile = $user->getProfile();
-        $url = $profile->profileurl;
+        $nickname = $this->trimmed('nickname');
+        try {
+          $user = User::getByNickname($nickname);
+          $profile = $user->getProfile();
+          $url = $profile->profileurl;
+        } catch (Exception $e) {
+          throw new \Exception('Invalid username');
+        }
+        
+        // TODO: Implement query parameters as per the doc
 
-        $avatar = $profile->avatarUrl(AVATAR_PROFILE_SIZE);
+        $total_faves = Fave::countByProfile ($profile);
+        
+        $fave = Fave::byProfile ($user->getID(), 0, $total_faves);
 
+        $faves = [];
+        while ($fave->fetch()) {
+          $faves[] = $this->pretty_fave (clone($fave));
+        }
+        
         $res = [
           '@context'          => [
             "https://www.w3.org/ns/activitystreams",
@@ -49,27 +64,23 @@ class ActivityPubActorAction extends ManagedAction
               "@language" => "en"
             ]
           ],
-          'id'                => $url,
-          'type'              => 'Person',
-          'following'         => "{$url}/subscriptions",
-          'followers'         => "{$url}/subscribers",
-          'inbox'             => null,
-          'outbox'            => null,
-          'liked'             => "{$url}/favorites",
-          'preferredUsername' => $user->nickname,
-          'name'              => $user->nickname,
-          'summary'           => $profile->bio,
-          'url'               => $url,
-          'icon'              => [
-            'type'   => 'Image',
-            'width'  => 96,
-            'height' => 96,
-            'url'    => $avatar
-          ]
+          'id'                => "{$url}/liked.json",
+          'type'              => 'OrderedCollection',
+          'totalItems'        => $total_faves,
+          'orderedItems'      => $faves
         ];
 
         header('Content-Type: application/json');
 
-        echo json_encode($res, JSON_PRETTY_PRINT);
+        echo json_encode($res, isset($_GET["pretty"]) ? JSON_PRETTY_PRINT : null);
+    }
+    
+    protected function pretty_fave ($fave_object)
+    {
+        $res = array ("uri"       => $fave_object->uri,
+                      "created"   => $fave_object->created,
+                      "object"    => Activitypub_notice::noticeToObject(Notice::getByID($fave_object->notice_id)));
+        
+        return $res;
     }
 }

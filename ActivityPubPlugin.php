@@ -22,6 +22,7 @@
  * @category  Plugin
  * @package   GNUsocial
  * @author    Daniel Supernault <danielsupernault@gmail.com>
+ * @author    Diogo Cordeiro <diogo@fc.up.pt>
  * @copyright 2014 Free Software Foundation http://fsf.org
  * @license   http://www.fsf.org/licensing/licenses/agpl-3.0.html GNU Affero General Public License version 3.0
  * @link      https://www.gnu.org/software/social/
@@ -34,13 +35,13 @@ class ActivityPubPlugin extends Plugin
 
     public function onRouterInitialized(URLMapper $m)
     {
-        $m->connect('api/statuses/user_timeline/:id.ap',
-                    ['action' => 'activitypubactor'],
-                    ['id'     => '[0-9]+']);
+        $m->connect(':nickname/profile.json',
+                    ['action'    => 'apActorProfile'],
+                    ['nickname'  => Nickname::DISPLAY_FMT]);
         
-        $m->connect('api/user/:id/liked.json',
-                    ['action' => 'likedactor'],
-                    ['id'     => '[0-9]+']);
+        $m->connect(':nickname/liked.json',
+                    ['action'    => 'apActorLikedCollection'],
+                    ['nickname'  => Nickname::DISPLAY_FMT]);
     }
 
     public function onPluginVersion(array &$versions)
