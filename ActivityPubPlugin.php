@@ -37,6 +37,10 @@ class ActivityPubPlugin extends Plugin
         $m->connect('api/statuses/user_timeline/:id.ap',
                     ['action' => 'activitypubactor'],
                     ['id'     => '[0-9]+']);
+        
+        $m->connect('api/user/:id/liked.json',
+                    ['action' => 'likedactor'],
+                    ['id'     => '[0-9]+']);
     }
 
     public function onPluginVersion(array &$versions)
