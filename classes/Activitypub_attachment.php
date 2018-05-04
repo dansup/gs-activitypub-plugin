@@ -21,8 +21,8 @@
  *
  * @category  Plugin
  * @package   GNUsocial
- * @author    Daniel Supernault <danielsupernault@gmail.com>
  * @author    Diogo Cordeiro <diogo@fc.up.pt>
+ * @author    Daniel Supernault <danielsupernault@gmail.com>
  * @copyright 2015 Free Software Foundaction, Inc.
  * @license   http://www.fsf.org/licensing/licenses/agpl-3.0.html GNU Affero General Public License version 3.0
  * @link      https://gnu.io/social
@@ -30,25 +30,36 @@
 
 if (!defined('GNUSOCIAL')) { exit(1); }
 
-class apActorProfileAction extends ManagedAction
+class Activitypub_attachment extends Managed_DataObject
 {
-    protected $needLogin = false;
-    protected $canPost   = true;
 
-    protected function handle()
-    {
-        $nickname = $this->trimmed('nickname');
-        try {
-          $user = User::getByNickname($nickname);
-          $profile = $user->getProfile();
-        } catch (Exception $e) {
-          throw new \Exception('Invalid username');
-        }
+  public static function attachmentToObject($attachment)
+  {
+      $res = [
+        '@context'          => [
+          "https://www.w3.org/ns/activitystreams",
+          [
+            "@language" => "en"
+          ]
+        ],
+        'id'        => $attachment->getID (),
+        'mimetype'  => $attachment->mimetype,
+        'url'       => $attachment->getUrl (),
+        'text_url'  => $attachment->isLocal () ? common_shorten_links($attachment->getUrl (), true): null,
+        'size'      => $attachment->getSize (),
+        'title'     => $attachment->getTitle (),
+        'meta'      => null
+      ];
+      
+      // Image
+      if (substr($res["mimetype"], 0, 5) == "image")
+      {
+        $res["meta"]= [
+          'width'  => $attachment->width,
+          'height' => $attachment->height
+        ];
+      }
 
-        header('Content-Type: application/json');
-
-        $res = Activitypub_profile::profileToObject($profile);
-
-        echo json_encode($res, JSON_UNESCAPED_SLASHES | (isset($_GET["pretty"]) ? JSON_PRETTY_PRINT : null));
-    }
+    return $res;
+  }
 }

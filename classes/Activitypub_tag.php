@@ -21,8 +21,8 @@
  *
  * @category  Plugin
  * @package   GNUsocial
- * @author    Daniel Supernault <danielsupernault@gmail.com>
  * @author    Diogo Cordeiro <diogo@fc.up.pt>
+ * @author    Daniel Supernault <danielsupernault@gmail.com>
  * @copyright 2015 Free Software Foundaction, Inc.
  * @license   http://www.fsf.org/licensing/licenses/agpl-3.0.html GNU Affero General Public License version 3.0
  * @link      https://gnu.io/social
@@ -30,25 +30,21 @@
 
 if (!defined('GNUSOCIAL')) { exit(1); }
 
-class apActorProfileAction extends ManagedAction
+class Activitypub_tag extends Managed_DataObject
 {
-    protected $needLogin = false;
-    protected $canPost   = true;
+  public static function tagNameToObject($tag)
+  {
+    $res = [
+      '@context'          => [
+        "https://www.w3.org/ns/activitystreams",
+        [
+          "@language" => "en"
+        ]
+      ],
+      'name'      => $tag,
+      'url'       => common_local_url('tag', array('tag' => $tag))
+    ];
 
-    protected function handle()
-    {
-        $nickname = $this->trimmed('nickname');
-        try {
-          $user = User::getByNickname($nickname);
-          $profile = $user->getProfile();
-        } catch (Exception $e) {
-          throw new \Exception('Invalid username');
-        }
-
-        header('Content-Type: application/json');
-
-        $res = Activitypub_profile::profileToObject($profile);
-
-        echo json_encode($res, JSON_UNESCAPED_SLASHES | (isset($_GET["pretty"]) ? JSON_PRETTY_PRINT : null));
-    }
+    return $res;
+  }
 }

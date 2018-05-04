@@ -33,32 +33,44 @@ if (!defined('GNUSOCIAL')) { exit(1); }
 class Activitypub_notice extends Managed_DataObject
 {
 
-    public static function noticeToObject($notice)
+  public static function noticeToObject($notice)
+  {
+    $attachments = [];
+    foreach ($notice->attachments () as $attachment)
     {
-      // todo: fix timestamp formats
-      $item = [
-        'id'  => $notice->getUrl(),
-        // TODO: handle other types
-        'type' => 'Notice',
-        'actor' => $notice->getProfile()->getUrl(),
-        'published' => $notice->created,
-        'to' => [
-            // TODO: handle proper scope
-          'https://www.w3.org/ns/activitystreams#Public'
-        ],
-        'cc' => [
-            // TODO: add cc's
-          "{$notice->getProfile()->getUrl()}/subscribers",
-        ],
-        'content' => $notice->getContent(),
-        'rendered' => $notice->getRendered(),
-        'url' => $notice->getUrl(),
-        'reply_to' => empty($notice->reply_to) ? null : Notice::getById($notice->reply_to)->getUrl(),
-        'is_local' => $notice->is_local,
-        'conversation' => $notice->conversation,
-        'attachment' => [],
-        'tag' => []
-      ];
-      return $item;
+      $attachments[] = Activitypub_attachment::attachmentToObject ($attachment);
     }
+
+    $tags = [];
+    foreach ($notice->getTags () as $tag)
+    {
+      $tags[] = Activitypub_tag::tagNameToObject ($tag);
+    }
+    
+    // todo: fix timestamp formats
+    $item = [
+      'id'           => $notice->getUrl(),
+      'type'         => 'Notice',                 // TODO: handle other types
+      'actor'        => $notice->getProfile()->getUrl(),
+      'published'    => $notice->getCreated (),
+      'to'           => [
+                                                  // TODO: handle proper scope
+                          'https://www.w3.org/ns/activitystreams#Public'
+                        ],
+      'cc'           => [
+                                                  // TODO: add cc's
+                          "{$notice->getProfile()->getUrl()}/subscribers",
+                        ],
+      'content'      => $notice->getContent(),
+      'rendered'     => $notice->getRendered(),
+      'url'          => $notice->getUrl(),
+      'reply_to'     => empty($notice->reply_to) ? null : Notice::getById($notice->reply_to)->getUrl(),
+      'is_local'     => $notice->isLocal(),
+      'conversation' => $notice->conversation,
+      'attachment'   => $attachments,
+      'tag'          => $tags
+    ];
+    
+    return $item;
+  }
 }
