@@ -72,7 +72,7 @@ class apActorLikedCollectionAction extends ManagedAction
 
         header('Content-Type: application/json');
 
-        echo json_encode($res, isset($_GET["pretty"]) ? JSON_PRETTY_PRINT : null);
+        echo json_encode($res, JSON_UNESCAPED_SLASHES | (isset($_GET["pretty"]) ? JSON_PRETTY_PRINT : null));
     }
     
     protected function pretty_fave ($fave_object)
