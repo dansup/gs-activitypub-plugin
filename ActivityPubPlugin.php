@@ -35,8 +35,17 @@ class ActivityPubPlugin extends Plugin
 
     public function onRouterInitialized(URLMapper $m)
     {
+        ActivitypubURLMapperOverwrite::overwrite_variable($m, ':nickname',
+                                    ['action' => 'showstream'],
+                                    ['nickname' => Nickname::DISPLAY_FMT],
+                                    'apactorprofile');
+        
         $m->connect(':nickname/profile.json',
                     ['action'    => 'apActorProfile'],
+                    ['nickname'  => Nickname::DISPLAY_FMT]);
+        
+        $m->connect(':nickname/liked.json',
+                    ['action'    => 'apActorLikedCollection'],
                     ['nickname'  => Nickname::DISPLAY_FMT]);
     }
 
@@ -50,5 +59,33 @@ class ActivityPubPlugin extends Plugin
                         // Todo: Translation
                         'Adds ActivityPub Support'];
         return true;
+    }
+}
+
+/**
+ * Overwrites variables in URL-mapping
+ *
+ */
+class ActivitypubURLMapperOverwrite extends URLMapper
+{
+    static function overwrite_variable($m, $path, $args, $paramPatterns, $newaction)
+    {
+        $mimes = [
+            'application/activity+json', 
+            'application/ld+json',
+            'application/ld+json; profile="https://www.w3.org/ns/activitystreams"'
+        ];
+
+        if (in_array($_SERVER["HTTP_ACCEPT"], $mimes) == false) {
+            return;
+        }
+        
+        $m->connect($path, array('action' => $newaction), $paramPatterns);
+        $regex = self::makeRegex($path, $paramPatterns);
+        foreach ($m->variables as $n => $v) {
+            if ($v[1] == $regex) {
+                $m->variables[$n][0]['action'] = $newaction;
+            }
+        }
     }
 }
