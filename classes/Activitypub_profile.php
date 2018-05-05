@@ -35,33 +35,34 @@ class Activitypub_profile extends Managed_DataObject
 
   public static function profileToObject($profile)
   {
-      $res = [
-        '@context'      => [
-          "https://www.w3.org/ns/activitystreams",
-          [
-            "@language" => "en"
-          ]
-        ],
-        'id'            => $profile->getID(),
-        'type'          => 'Person',
-        'nickname'      => $profile->getNickname (),
-        'is_local'      => $profile->isLocal(),
-        'inbox'         => "{$url}/inbox.json",
-        'outbox'        => "{$url}/outbox.json",
-        'display_name'  => $profile->getFullname(),
-        'followers'     => "{$url}/subscribers",
-        'following'     => "{$url}/subscriptions",
-        'liked'         => "{$url}/liked.json",
-        'liked_count'   => Fave::countByProfile ($profile),
-        'summary'       => $profile->getDescription(),
-        'url'           => $profile->getURL(),
-        'avatar'        => [
-          'type'   => 'Image',
-          'width'  => 96,
-          'height' => 96,
-          'url'    => $profile->avatarUrl(AVATAR_PROFILE_SIZE)
+    $url = $profile->getURL ();
+    $res = [
+      '@context'      => [
+        "https://www.w3.org/ns/activitystreams",
+        [
+          "@language" => "en"
         ]
-      ];
+      ],
+      'id'            => $profile->getID(),
+      'type'          => 'Person',
+      'nickname'      => $profile->getNickname (),
+      'is_local'      => $profile->isLocal(),
+      'inbox'         => "{$url}/inbox.json",
+      'outbox'        => "{$url}/outbox.json",
+      'display_name'  => $profile->getFullname(),
+      'followers'     => "{$url}/followers.json",
+      'following'     => "{$url}/following.json",
+      'liked'         => "{$url}/liked.json",
+      'liked_count'   => Fave::countByProfile ($profile),
+      'summary'       => $profile->getDescription(),
+      'url'           => $profile->getURL(),
+      'avatar'        => [
+        'type'   => 'Image',
+        'width'  => 96,
+        'height' => 96,
+        'url'    => $profile->avatarUrl(AVATAR_PROFILE_SIZE)
+      ]
+    ];
     return $res;
   }
 }
