@@ -45,7 +45,6 @@ class Activitypub_attachment extends Managed_DataObject
         'id'        => $attachment->getID (),
         'mimetype'  => $attachment->mimetype,
         'url'       => $attachment->getUrl (),
-        'text_url'  => $attachment->isLocal () ? common_shorten_links($attachment->getUrl (), true): null,
         'size'      => $attachment->getSize (),
         'title'     => $attachment->getTitle (),
         'meta'      => null
