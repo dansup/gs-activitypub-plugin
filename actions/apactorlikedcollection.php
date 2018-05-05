@@ -39,22 +39,30 @@ class apActorLikedCollectionAction extends ManagedAction
     {
         $nickname = $this->trimmed('nickname');
         try {
-          $user = User::getByNickname($nickname);
+          $user    = User::getByNickname($nickname);
           $profile = $user->getProfile();
-          $url = $profile->profileurl;
+          $url     = $profile->profileurl;
         } catch (Exception $e) {
           throw new \Exception('Invalid username');
         }
         
-        // TODO: Implement query parameters as per the doc
+        $limit    = intval($this->trimmed('limit'));
+        $since_id = intval($this->trimmed('since_id'));
+        $max_id   = intval($this->trimmed('max_id'));
 
-        $total_faves = Fave::countByProfile ($profile);
+        $limit    = empty ($limit) ? 40 : $limit; // Default is 40
+        $since_id = empty ($since_id) ? null : $since_id;
+        $max_id   = empty ($max_id) ? null : $max_id;
         
-        $fave = Fave::byProfile ($user->getID(), 0, $total_faves);
+        if ($limit > 80) $limit = 80; // Max is 80
+        
+        $fave = $this->fetch_faves ($user->getID(), $limit, $since_id, $max_id);
 
+        $total_faves = 0;
         $faves = [];
         while ($fave->fetch()) {
           $faves[] = $this->pretty_fave (clone($fave));
+          ++$total_faves;
         }
         
         $res = [
@@ -82,5 +90,25 @@ class apActorLikedCollectionAction extends ManagedAction
                       "object"    => Activitypub_notice::noticeToObject(Notice::getByID($fave_object->notice_id)));
         
         return $res;
+    }
+    
+    private static function fetch_faves ($user_id, $limit = 40, $since_id = null, $max_id = null)
+    {
+        $fav = new Fave();
+
+        $fav->user_id = $user_id;
+        
+        $fav->orderBy('modified DESC');
+
+        if ($since_id != null)
+            $fav->whereAdd("notice_id  > {$since_id}");
+        if ($max_id != null)
+            $fav->whereAdd("notice_id  < {$max_id}");
+        
+        $fav->limit($limit);
+
+        $fav->find();
+
+        return $fav;
     }
 }
