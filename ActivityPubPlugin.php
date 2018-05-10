@@ -52,9 +52,9 @@ class ActivityPubPlugin extends Plugin
                     ['action'    => 'apActorFollowers'],
                     ['nickname'  => Nickname::DISPLAY_FMT]);
         
-        /*$m->connect(':nickname/following.json',
+        $m->connect(':nickname/following.json',
                     ['action'    => 'apActorFollowing'],
-                    ['nickname'  => Nickname::DISPLAY_FMT]);*/
+                    ['nickname'  => Nickname::DISPLAY_FMT]);
     }
 
     public function onPluginVersion(array &$versions)
