@@ -30,7 +30,7 @@
 
 if (!defined('GNUSOCIAL')) { exit(1); }
 
-class apActorLikedCollectionAction extends ManagedAction
+class apActorFollowersAction extends ManagedAction
 {
     protected $needLogin = false;
     protected $canPost   = true;
@@ -46,36 +46,46 @@ class apActorLikedCollectionAction extends ManagedAction
           throw new \Exception('Invalid username');
         }
         
-        $limit    = intval($this->trimmed('limit'));
-        $since_id = intval($this->trimmed('since_id'));
-        $max_id   = intval($this->trimmed('max_id'));
-
-        $limit    = empty ($limit) ? 40 : $limit; // Default is 40
-        $since_id = empty ($since_id) ? null : $since_id;
-        $max_id   = empty ($max_id) ? null : $max_id;
+        $page = intval($this->trimmed('page'));
         
-        if ($limit > 80) $limit = 80; // Max is 80
+        if ($page <= 0)
+            throw new \Exception('Invalid page number');        
         
-        $fave = $this->fetch_faves ($user->getID(), $limit, $since_id, $max_id);
-
-        $total_faves = 0;
-        $faves = [];
-        while ($fave->fetch()) {
-          $faves[] = $this->pretty_fave (clone($fave));
-          ++$total_faves;
+        /* Fetch Followers */
+        try {
+            $since = ($page-1) * PROFILES_PER_MINILIST;
+            $limit = (($page-1) == 0 ? 1 : $page)*PROFILES_PER_MINILIST;
+            $sub = $profile->getSubscribers($since, $limit);
+        } catch (NoResultException $e) {
+            throw new \Exception('This user has no followers');
         }
+
+        /* Calculate total items */
+        $total_subs  = $profile->subscriberCount();
+        $total_pages = ceil($total_subs/PROFILES_PER_MINILIST);
+        
+        if ($total_pages == 0)
+            throw new \Exception('This user has no followers');
+        
+        if ($page > $total_pages)
+            throw new \Exception("There are only {$total_pages} pages");
+        
+        /* Get followers' URLs */
+        $subs = [];
+        while ($sub->fetch())
+          $subs[] = $this->pretty_sub (clone($sub));
         
         $res = [
           '@context'          => [
             "https://www.w3.org/ns/activitystreams",
-            [
-              "@language" => "en"
-            ]
+            "https://w3id.org/security/v1",
           ],
-          'id'                => "{$url}/liked.json",
-          'type'              => 'OrderedCollection',
-          'totalItems'        => $total_faves,
-          'orderedItems'      => $faves
+          'id'                => "{$url}/followers.json",
+          'type'              => ($page == 0 ? 'OrderedCollection' : 'OrderedCollectionPage'),
+          'totalItems'        => $total_subs,
+          'next'              => $page+1 > $total_pages ? null : "{$url}/followers.json?page=".($page+1 == 1 ? 2 : $page+1),
+          'prev'              => $page == 1 ? null : "{$url}/followers.json?page=".($page-1 <= 0 ? 1 : $page-1),
+          'orderedItems'      => $subs
         ];
 
         header('Content-Type: application/activity+json');
@@ -83,32 +93,8 @@ class apActorLikedCollectionAction extends ManagedAction
         echo json_encode($res, JSON_UNESCAPED_SLASHES | (isset($_GET["pretty"]) ? JSON_PRETTY_PRINT : null));
     }
     
-    protected function pretty_fave ($fave_object)
+    protected function pretty_sub ($sub_object)
     {
-        $res = array ("uri"       => $fave_object->uri,
-                      "created"   => $fave_object->created,
-                      "object"    => Activitypub_notice::noticeToObject(Notice::getByID($fave_object->notice_id)));
-        
-        return $res;
-    }
-    
-    private static function fetch_faves ($user_id, $limit = 40, $since_id = null, $max_id = null)
-    {
-        $fav = new Fave();
-
-        $fav->user_id = $user_id;
-        
-        $fav->orderBy('modified DESC');
-
-        if ($since_id != null)
-            $fav->whereAdd("notice_id  > {$since_id}");
-        if ($max_id != null)
-            $fav->whereAdd("notice_id  < {$max_id}");
-        
-        $fav->limit($limit);
-
-        $fav->find();
-
-        return $fav;
+        return $sub_object->profileurl;
     }
 }
