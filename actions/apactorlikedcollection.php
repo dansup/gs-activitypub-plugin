@@ -58,12 +58,9 @@ class apActorLikedCollectionAction extends ManagedAction
         
         $fave = $this->fetch_faves ($user->getID(), $limit, $since_id, $max_id);
 
-        $total_faves = 0;
         $faves = [];
-        while ($fave->fetch()) {
+        while ($fave->fetch())
           $faves[] = $this->pretty_fave (clone($fave));
-          ++$total_faves;
-        }
         
         $res = [
           '@context'          => [
@@ -74,7 +71,7 @@ class apActorLikedCollectionAction extends ManagedAction
           ],
           'id'                => "{$url}/liked.json",
           'type'              => 'OrderedCollection',
-          'totalItems'        => $total_faves,
+          'totalItems'        => Fave::countByProfile ($profile),
           'orderedItems'      => $faves
         ];
 

@@ -62,7 +62,6 @@ class Activitypub_notice extends Managed_DataObject
                           "{$notice->getProfile()->getUrl()}/subscribers",
                         ],
       'content'      => $notice->getContent(),
-      'rendered'     => $notice->getRendered(),
       'url'          => $notice->getUrl(),
       'reply_to'     => empty($notice->reply_to) ? null : Notice::getById($notice->reply_to)->getUrl(),
       'is_local'     => $notice->isLocal(),
