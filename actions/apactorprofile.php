@@ -31,7 +31,7 @@
 if (!defined('GNUSOCIAL')) { exit(1); }
 
 class apActorProfileAction extends ManagedAction
-{
+{    
     protected $needLogin = false;
     protected $canPost   = true;
 
@@ -45,7 +45,7 @@ class apActorProfileAction extends ManagedAction
           throw new \Exception('Invalid username');
         }
 
-        header('Content-Type: application/json');
+        header('Content-Type: application/activity+json');
 
         $res = Activitypub_profile::profileToObject($profile);
 
