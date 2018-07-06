@@ -33,12 +33,25 @@ if (!defined('GNUSOCIAL')) { exit(1); }
 class Activitypub_Discovery {
     public function lookup ($url)
     {
-        // First check if we already have it locally
+        // First check if we already have it locally and, if so, return it
         if (($actor_profile = Profile::getKV("profileurl", $url)) != false) {
             return $actor_profile;
+        } else { 
+            // Sometimes it is not true that the user is not locally available, 
+            // mostly when it is a local user and URLs slightly changed 
+            // (not sure if this is necessary, but anyway)
+ 	    
+            // Iff we really are in the same instance
+	    $root_url_len = strlen (common_root_url ());
+	    if (substr ($url, 0, $root_url_len) == common_root_url ()) {
+	        // Grab the nickname and try to get the user
+	        if (($actor_profile = Profile::getKV("nickname", substr ($url, $root_url_len))) != false) {
+                    return $actor_profile;
+                }
+            }
         }
 
-        // If that's not the case, grab it
+        // If the local fetch fails: grab it remotely, store locally and return
         $client         = new HTTPClient ();
         $headers        = array();
         $headers[]      = 'Accept: application/ld+json; profile="https://www.w3.org/ns/activitystreams"';
@@ -46,7 +59,7 @@ class Activitypub_Discovery {
         $response       = $client->get ($url, $headers);
         $this->response = json_decode ($response->getBody (), JSON_UNESCAPED_SLASHES);
         if (!$response->isOk ())
-            ActivityPubReturn::error("Invalid Actor URL", 404);
+            ActivityPubReturn::error ("Invalid Actor URL", 404);
         return $this->storeProfile ();
     }
 
@@ -56,7 +69,7 @@ class Activitypub_Discovery {
         $profile             = new Profile;
         $profile->profileurl = $res["url"];
         $profile->nickname   = $res["nickname"];
-        $profile->fulname    = $res["display_name"];
+        $profile->fullname   = $res["display_name"];
         $profile->bio        = str_limit($res["summary"], 1000);
         $profile->insert ();
 
