@@ -40,10 +40,6 @@ class ActivityPubPlugin extends Plugin
                                     ['nickname' => Nickname::DISPLAY_FMT],
                                     'apactorprofile');
         
-        $m->connect(':nickname/profile.json',
-                    ['action'    => 'apActorProfile'],
-                    ['nickname'  => Nickname::DISPLAY_FMT]);
-        
         $m->connect(':nickname/liked.json',
                     ['action'    => 'apActorLikedCollection'],
                     ['nickname'  => Nickname::DISPLAY_FMT]);
