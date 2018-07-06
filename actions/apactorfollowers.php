@@ -43,38 +43,38 @@ class apActorFollowersAction extends ManagedAction
           $profile = $user->getProfile();
           $url     = $profile->profileurl;
         } catch (Exception $e) {
-          throw new \Exception('Invalid username');
+          ActivityPubReturn::error ('Invalid username');
         }
-        
+
         $page = intval($this->trimmed('page'));
-        
+
         if ($page <= 0)
-            throw new \Exception('Invalid page number');        
-        
+            ActivityPubReturn::error ('Invalid page number');
+
         /* Fetch Followers */
         try {
             $since = ($page-1) * PROFILES_PER_MINILIST;
             $limit = (($page-1) == 0 ? 1 : $page)*PROFILES_PER_MINILIST;
             $sub = $profile->getSubscribers($since, $limit);
         } catch (NoResultException $e) {
-            throw new \Exception('This user has no followers');
+            ActivityPubReturn::error ('This user has no followers');
         }
 
         /* Calculate total items */
         $total_subs  = $profile->subscriberCount();
         $total_pages = ceil($total_subs/PROFILES_PER_MINILIST);
-        
+
         if ($total_pages == 0)
-            throw new \Exception('This user has no followers');
-        
+            ActivityPubReturn::error ('This user has no followers');
+
         if ($page > $total_pages)
-            throw new \Exception("There are only {$total_pages} pages");
-        
+            ActivityPubReturn::error ("There are only {$total_pages} pages");
+
         /* Get followers' URLs */
         $subs = [];
         while ($sub->fetch())
           $subs[] = $this->pretty_sub (clone($sub));
-        
+
         $res = [
           '@context'          => [
             "https://www.w3.org/ns/activitystreams",
@@ -88,11 +88,9 @@ class apActorFollowersAction extends ManagedAction
           'orderedItems'      => $subs
         ];
 
-        header('Content-Type: application/activity+json');
-
-        echo json_encode($res, JSON_UNESCAPED_SLASHES | (isset($_GET["pretty"]) ? JSON_PRETTY_PRINT : null));
+        ActivityPubReturn::answer ($res);
     }
-    
+
     protected function pretty_sub ($sub_object)
     {
         return $sub_object->profileurl;

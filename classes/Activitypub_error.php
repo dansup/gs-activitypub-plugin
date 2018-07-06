@@ -21,8 +21,8 @@
  *
  * @category  Plugin
  * @package   GNUsocial
- * @author    Daniel Supernault <danielsupernault@gmail.com>
  * @author    Diogo Cordeiro <diogo@fc.up.pt>
+ * @author    Daniel Supernault <danielsupernault@gmail.com>
  * @copyright 2015 Free Software Foundaction, Inc.
  * @license   http://www.fsf.org/licensing/licenses/agpl-3.0.html GNU Affero General Public License version 3.0
  * @link      https://gnu.io/social
@@ -30,23 +30,14 @@
 
 if (!defined('GNUSOCIAL')) { exit(1); }
 
-class apActorProfileAction extends ManagedAction
+class Activitypub_error extends Managed_DataObject
 {
-    protected $needLogin = false;
-    protected $canPost   = true;
+  public static function errorMessageToObject($m)
+  {
+    $res = [
+      'error'=> $m
+    ];
 
-    protected function handle()
-    {
-        $nickname = $this->trimmed('nickname');
-        try {
-          $user = User::getByNickname($nickname);
-          $profile = $user->getProfile();
-        } catch (Exception $e) {
-          ActivityPubReturn::error ('Invalid username', 404);
-        }
-
-        $res = Activitypub_profile::profileToObject($profile);
-
-        ActivityPubReturn::answer ($res);
-    }
+    return $res;
+  }
 }

@@ -35,7 +35,7 @@ class ActivityPubPlugin extends Plugin
 
     public function onRouterInitialized(URLMapper $m)
     {
-        ActivitypubURLMapperOverwrite::overwrite_variable($m, ':nickname',
+        ActivityPubURLMapperOverwrite::overwrite_variable($m, ':nickname',
                                     ['action' => 'showstream'],
                                     ['nickname' => Nickname::DISPLAY_FMT],
                                     'apactorprofile');
@@ -70,7 +70,7 @@ class ActivityPubPlugin extends Plugin
  * Overwrites variables in URL-mapping
  *
  */
-class ActivitypubURLMapperOverwrite extends URLMapper
+class ActivityPubURLMapperOverwrite extends URLMapper
 {
     static function overwrite_variable($m, $path, $args, $paramPatterns, $newaction)
     {
@@ -80,8 +80,8 @@ class ActivitypubURLMapperOverwrite extends URLMapper
             'application/ld+json; profile="https://www.w3.org/ns/activitystreams"'
         ];
 
-        if (in_array($_SERVER["HTTP_ACCEPT"], $mimes) == false) {
-            return;
+        if (in_array ($_SERVER["HTTP_ACCEPT"], $mimes) == false) {
+            return true;
         }
         
         $m->connect($path, array('action' => $newaction), $paramPatterns);
@@ -91,5 +91,23 @@ class ActivitypubURLMapperOverwrite extends URLMapper
                 $m->variables[$n][0]['action'] = $newaction;
             }
         }
+    }
+}
+
+class ActivityPubReturn
+{
+    static function answer ($res)
+    {
+        header('Content-Type: application/activity+json');
+        echo json_encode($res, JSON_UNESCAPED_SLASHES | (isset($_GET["pretty"]) ? JSON_PRETTY_PRINT : null));
+        exit;
+    }
+    static function error ($m, $code=500)
+    {
+        http_response_code ($code);
+        header('Content-Type: application/activity+json');
+        $res[] = Activitypub_error::errorMessageToObject($m);
+        echo json_encode($res, JSON_UNESCAPED_SLASHES);
+        exit;
     }
 }
