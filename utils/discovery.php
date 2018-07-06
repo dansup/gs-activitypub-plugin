@@ -70,7 +70,7 @@ class Activitypub_Discovery {
         $profile->profileurl = $res["url"];
         $profile->nickname   = $res["nickname"];
         $profile->fullname   = $res["display_name"];
-        $profile->bio        = str_limit($res["summary"], 1000);
+        $profile->bio        = substr ($res["summary"], 0, 1000);
         $profile->insert ();
 
         return $profile;
