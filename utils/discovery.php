@@ -1,4 +1,7 @@
 <?php
+
+use Profile;
+
 /**
  * GNU social - a federating social network
  *
@@ -34,18 +37,19 @@ class Activitypub_Discovery {
     public function lookup ($url)
     {
         // First check if we already have it locally and, if so, return it
-        if (($actor_profile = Profile::getKV("profileurl", $url)) != false) {
+        if (($actor_profile = Profile::getKV ("profileurl", $url)) != false) {
             return $actor_profile;
-        } else { 
-            // Sometimes it is not true that the user is not locally available, 
-            // mostly when it is a local user and URLs slightly changed 
+        } else {
+            // Sometimes it is not true that the user is not locally available,
+            // mostly when it is a local user and URLs slightly changed
+            // e.g.: GS instance owner changed from standard urls to pretty urls
             // (not sure if this is necessary, but anyway)
- 	    
+
             // Iff we really are in the same instance
-	    $root_url_len = strlen (common_root_url ());
-	    if (substr ($url, 0, $root_url_len) == common_root_url ()) {
-	        // Grab the nickname and try to get the user
-	        if (($actor_profile = Profile::getKV("nickname", substr ($url, $root_url_len))) != false) {
+            $root_url_len = strlen (common_root_url ());
+            if (substr ($url, 0, $root_url_len) == common_root_url ()) {
+                // Grab the nickname and try to get the user
+                if (($actor_profile = Profile::getKV ("nickname", substr ($url, $root_url_len))) != false) {
                     return $actor_profile;
                 }
             }
@@ -58,14 +62,20 @@ class Activitypub_Discovery {
         $headers[]      = 'User-Agent: GNUSocialBot v0.1 - https://gnu.io/social';
         $response       = $client->get ($url, $headers);
         $this->response = json_decode ($response->getBody (), JSON_UNESCAPED_SLASHES);
-        if (!$response->isOk ())
-            ActivityPubReturn::error ("Invalid Actor URL", 404);
+        if (!$response->isOk()) {
+            throw new NoResultException ("Invalid Actor URL.");
+        }
         return $this->storeProfile ();
     }
 
-    public function storeProfile ()
+    private function storeProfile ()
     {
-        $res                 = $this->response;
+        $res = $this->response;
+        // Validate response
+        if (!isset ($res["url"], $res["nickname"], $res["display_name"], $res["summary"])) {
+            throw new NoProfileException("Invalid Actor URL.");
+        }
+
         $profile             = new Profile;
         $profile->profileurl = $res["url"];
         $profile->nickname   = $res["nickname"];
