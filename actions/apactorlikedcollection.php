@@ -43,9 +43,9 @@ class apActorLikedCollectionAction extends ManagedAction
           $profile = $user->getProfile();
           $url     = $profile->profileurl;
         } catch (Exception $e) {
-          throw new \Exception('Invalid username');
+          ActivityPubReturn::error ('Invalid username');
         }
-        
+
         $limit    = intval($this->trimmed('limit'));
         $since_id = intval($this->trimmed('since_id'));
         $max_id   = intval($this->trimmed('max_id'));
@@ -53,15 +53,15 @@ class apActorLikedCollectionAction extends ManagedAction
         $limit    = empty ($limit) ? 40 : $limit; // Default is 40
         $since_id = empty ($since_id) ? null : $since_id;
         $max_id   = empty ($max_id) ? null : $max_id;
-        
+
         if ($limit > 80) $limit = 80; // Max is 80
-        
+
         $fave = $this->fetch_faves ($user->getID(), $limit, $since_id, $max_id);
 
         $faves = [];
         while ($fave->fetch())
           $faves[] = $this->pretty_fave (clone($fave));
-        
+
         $res = [
           '@context'          => [
             "https://www.w3.org/ns/activitystreams",
@@ -75,33 +75,31 @@ class apActorLikedCollectionAction extends ManagedAction
           'orderedItems'      => $faves
         ];
 
-        header('Content-Type: application/activity+json');
-
-        echo json_encode($res, JSON_UNESCAPED_SLASHES | (isset($_GET["pretty"]) ? JSON_PRETTY_PRINT : null));
+        ActivityPubReturn::answer ($res);
     }
-    
+
     protected function pretty_fave ($fave_object)
     {
         $res = array ("uri"       => $fave_object->uri,
                       "created"   => $fave_object->created,
                       "object"    => Activitypub_notice::noticeToObject(Notice::getByID($fave_object->notice_id)));
-        
+
         return $res;
     }
-    
+
     private static function fetch_faves ($user_id, $limit = 40, $since_id = null, $max_id = null)
     {
         $fav = new Fave();
 
         $fav->user_id = $user_id;
-        
+
         $fav->orderBy('modified DESC');
 
         if ($since_id != null)
             $fav->whereAdd("notice_id  > {$since_id}");
         if ($max_id != null)
             $fav->whereAdd("notice_id  < {$max_id}");
-        
+
         $fav->limit($limit);
 
         $fav->find();
