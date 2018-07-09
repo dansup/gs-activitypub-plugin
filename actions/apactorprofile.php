@@ -2,9 +2,7 @@
 /**
  * GNU social - a federating social network
  *
- * Todo: Description
- *
- * PHP version 5
+ * ActivityPubPlugin implementation for GNU Social
  *
  * LICENCE: This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -23,30 +21,44 @@
  * @package   GNUsocial
  * @author    Daniel Supernault <danielsupernault@gmail.com>
  * @author    Diogo Cordeiro <diogo@fc.up.pt>
- * @copyright 2015 Free Software Foundaction, Inc.
+ * @copyright 2018 Free Software Foundation http://fsf.org
  * @license   http://www.fsf.org/licensing/licenses/agpl-3.0.html GNU Affero General Public License version 3.0
- * @link      https://gnu.io/social
+ * @link      https://www.gnu.org/software/social/
  */
+if (!defined ('GNUSOCIAL')) {
+        exit(1);
+}
 
-if (!defined('GNUSOCIAL')) { exit(1); }
-
+/**
+ * @category  Plugin
+ * @package   GNUsocial
+ * @author    Daniel Supernault <danielsupernault@gmail.com>
+ * @author    Diogo Cordeiro <diogo@fc.up.pt>
+ * @license   http://www.fsf.org/licensing/licenses/agpl-3.0.html GNU Affero General Public License version 3.0
+ * @link      http://www.gnu.org/software/social/
+ */
 class apActorProfileAction extends ManagedAction
 {
-    protected $needLogin = false;
-    protected $canPost   = true;
+        protected $needLogin = false;
+        protected $canPost   = true;
 
-    protected function handle()
-    {
-        $nickname = $this->trimmed('nickname');
-        try {
-          $user = User::getByNickname($nickname);
-          $profile = $user->getProfile();
-        } catch (Exception $e) {
-          ActivityPubReturn::error ('Invalid username', 404);
+        /**
+         * Handle the Actor Profile request
+         *
+         * @return void
+         */
+        protected function handle() {
+                $nickname = $this->trimmed ('nickname');
+                try {
+                        $user    = User::getByNickname ($nickname);
+                        $profile = $user->getProfile ();
+                }
+                catch (Exception $e) {
+                        ActivityPubReturn::error ('Invalid username', 404);
+                }
+
+                $res = Activitypub_profile::profileToObject ($profile);
+
+                ActivityPubReturn::answer ($res);
         }
-
-        $res = Activitypub_profile::profileToObject($profile);
-
-        ActivityPubReturn::answer ($res);
-    }
 }

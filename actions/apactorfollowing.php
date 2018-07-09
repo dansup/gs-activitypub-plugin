@@ -2,9 +2,7 @@
 /**
  * GNU social - a federating social network
  *
- * Todo: Description
- *
- * PHP version 5
+ * ActivityPubPlugin implementation for GNU Social
  *
  * LICENCE: This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -23,76 +21,88 @@
  * @package   GNUsocial
  * @author    Diogo Cordeiro <diogo@fc.up.pt>
  * @author    Daniel Supernault <danielsupernault@gmail.com>
- * @copyright 2015 Free Software Foundaction, Inc.
+ * @copyright 2018 Free Software Foundation http://fsf.org
  * @license   http://www.fsf.org/licensing/licenses/agpl-3.0.html GNU Affero General Public License version 3.0
- * @link      https://gnu.io/social
+ * @link      https://www.gnu.org/software/social/
  */
+if (!defined ('GNUSOCIAL')) {
+        exit(1);
+}
 
-if (!defined('GNUSOCIAL')) { exit(1); }
-
+/**
+ * @category  Plugin
+ * @package   GNUsocial
+ * @author    Diogo Cordeiro <diogo@fc.up.pt>
+ * @author    Daniel Supernault <danielsupernault@gmail.com>
+ * @license   http://www.fsf.org/licensing/licenses/agpl-3.0.html GNU Affero General Public License version 3.0
+ * @link      http://www.gnu.org/software/social/
+ */
 class apActorFollowingAction extends ManagedAction
 {
-    protected $needLogin = false;
-    protected $canPost   = true;
+        protected $needLogin = false;
+        protected $canPost   = true;
 
-    protected function handle()
-    {
-        $nickname = $this->trimmed('nickname');
-        try {
-          $user    = User::getByNickname($nickname);
-          $profile = $user->getProfile();
-          $url     = $profile->profileurl;
-        } catch (Exception $e) {
-          ActivityPubReturn::error ('Invalid username');
+        /**
+         * Handle the Following Collection request
+         *
+         * @return void
+         */
+        protected function handle () {
+                $nickname = $this->trimmed ('nickname');
+                try {
+                        $user    = User::getByNickname ($nickname);
+                        $profile = $user->getProfile ();
+                        $url     = $profile->profileurl;
+                } catch (Exception $e) {
+                        ActivityPubReturn::error ('Invalid username');
+                }
+
+                $page = intval ($this->trimmed ('page'));
+
+                if ($page <= 0) {
+                        ActivityPubReturn::error ('Invalid page number');
+                }
+
+                /* Fetch Following */
+                try {
+                        $since = ($page - 1) * PROFILES_PER_MINILIST;
+                        $limit = (($page - 1) == 0 ? 1 : $page) * PROFILES_PER_MINILIST;
+                        $sub = $profile->getSubscribed($since, $limit);
+                } catch(NoResultException $e) {
+                        ActivityPubReturn::error ('This user is not following anyone');
+                }
+
+                /* Calculate total items */
+                $total_subs  = $profile->subscriptionCount();
+                $total_pages = ceil ($total_subs / PROFILES_PER_MINILIST);
+
+                if ($total_pages == 0) {
+                        ActivityPubReturn::error ('This user has no followers');
+                }
+
+                if ($page > $total_pages) {
+                        ActivityPubReturn::error ("There are only {$total_pages} pages");
+                }
+
+                /* Get followed' URLs */
+                $subs = array ();
+                while ($sub->fetch ()) {
+                        $subs[] = $sub->profileurl;
+                }
+
+                $res = [
+                  '@context'     => [
+                    "https://www.w3.org/ns/activitystreams",
+                    "https://w3id.org/security/v1",
+                  ],
+                  'id'           => "{$url}/following.json",
+                  'type'         => ($page == 0 ? 'OrderedCollection' : 'OrderedCollectionPage'),
+                  'totalItems'   => $total_subs,
+                  'next'         => $page+1 > $total_pages ? null : "{$url}/followers.json?page=".($page+1 == 1 ? 2 : $page+1),
+                  'prev'         => $page == 1 ? null : "{$url}/followers.json?page=".($page-1 <= 0 ? 1 : $page-1),
+                  'orderedItems' => $subs
+                ];
+
+                ActivityPubReturn::answer ($res);
         }
-
-        $page = intval($this->trimmed('page'));
-
-        if ($page <= 0)
-            ActivityPubReturn::error ('Invalid page number');
-
-        /* Fetch Following */
-        try {
-            $since = ($page-1) * PROFILES_PER_MINILIST;
-            $limit = (($page-1) == 0 ? 1 : $page)*PROFILES_PER_MINILIST;
-            $sub = $profile->getSubscribed($since, $limit);
-        } catch (NoResultException $e) {
-            ActivityPubReturn::error ('This user is not following anyone');
-        }
-
-        /* Calculate total items */
-        $total_subs  = $profile->subscriptionCount();
-        $total_pages = ceil($total_subs/PROFILES_PER_MINILIST);
-
-        if ($total_pages == 0)
-            ActivityPubReturn::error ('This user has no followers');
-
-        if ($page > $total_pages)
-            ActivityPubReturn::error ("There are only {$total_pages} pages");
-
-        /* Get followed' URLs */
-        $subs = [];
-        while ($sub->fetch())
-          $subs[] = $this->pretty_sub (clone($sub));
-
-        $res = [
-          '@context'          => [
-            "https://www.w3.org/ns/activitystreams",
-            "https://w3id.org/security/v1",
-          ],
-          'id'                => "{$url}/following.json",
-          'type'              => ($page == 0 ? 'OrderedCollection' : 'OrderedCollectionPage'),
-          'totalItems'        => $total_subs,
-          'next'              => $page+1 > $total_pages ? null : "{$url}/followers.json?page=".($page+1 == 1 ? 2 : $page+1),
-          'prev'              => $page == 1 ? null : "{$url}/followers.json?page=".($page-1 <= 0 ? 1 : $page-1),
-          'orderedItems'      => $subs
-        ];
-
-        ActivityPubReturn::answer ($res);
-    }
-
-    protected function pretty_sub ($sub_object)
-    {
-        return $sub_object->profileurl;
-    }
 }

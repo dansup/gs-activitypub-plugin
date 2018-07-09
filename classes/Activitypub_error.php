@@ -2,10 +2,8 @@
 /**
  * GNU social - a federating social network
  *
- * Todo: Description
- *
- * PHP version 5
- *
+ * ActivityPubPlugin implementation for GNU Social
+ * 
  * LICENCE: This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
@@ -23,21 +21,34 @@
  * @package   GNUsocial
  * @author    Diogo Cordeiro <diogo@fc.up.pt>
  * @author    Daniel Supernault <danielsupernault@gmail.com>
- * @copyright 2015 Free Software Foundaction, Inc.
+ * @copyright 2018 Free Software Foundation http://fsf.org
  * @license   http://www.fsf.org/licensing/licenses/agpl-3.0.html GNU Affero General Public License version 3.0
- * @link      https://gnu.io/social
+ * @link      https://www.gnu.org/software/social/
  */
+if (!defined ('GNUSOCIAL')) {
+        exit(1);
+}
 
-if (!defined('GNUSOCIAL')) { exit(1); }
-
+/**
+ * @category  Plugin
+ * @package   GNUsocial
+ * @author    Diogo Cordeiro <diogo@fc.up.pt>
+ * @author    Daniel Supernault <danielsupernault@gmail.com>
+ * @license   http://www.fsf.org/licensing/licenses/agpl-3.0.html GNU Affero General Public License version 3.0
+ * @link      http://www.gnu.org/software/social/
+ */
 class Activitypub_error extends Managed_DataObject
 {
-  public static function errorMessageToObject($m)
-  {
-    $res = [
-      'error'=> $m
-    ];
-
-    return $res;
-  }
+        /**
+         * Generates a pretty error from a string
+         *
+         * @param string $m
+         * @return pretty array to be used in a response
+         */
+	public static function errorMessageToObject ($m) {
+		$res = [
+			'error'=> $m
+		];
+		return $res;
+        }
 }

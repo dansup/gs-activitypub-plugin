@@ -2,9 +2,7 @@
 /**
  * GNU social - a federating social network
  *
- * Todo: Description
- *
- * PHP version 5
+ * ActivityPubPlugin implementation for GNU Social
  *
  * LICENCE: This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -23,55 +21,66 @@
  * @package   GNUsocial
  * @author    Daniel Supernault <danielsupernault@gmail.com>
  * @author    Diogo Cordeiro <diogo@fc.up.pt>
- * @copyright 2015 Free Software Foundaction, Inc.
+ * @copyright 2018 Free Software Foundation http://fsf.org
  * @license   http://www.fsf.org/licensing/licenses/agpl-3.0.html GNU Affero General Public License version 3.0
- * @link      https://gnu.io/social
+ * @link      https://www.gnu.org/software/social/
  */
+if (!defined ('GNUSOCIAL')) {
+        exit(1);
+}
 
-if (!defined('GNUSOCIAL')) { exit(1); }
-
+/**
+ * @category  Plugin
+ * @package   GNUsocial
+ * @author    Daniel Supernault <danielsupernault@gmail.com>
+ * @author    Diogo Cordeiro <diogo@fc.up.pt>
+ * @license   http://www.fsf.org/licensing/licenses/agpl-3.0.html GNU Affero General Public License version 3.0
+ * @link      http://www.gnu.org/software/social/
+ */
 class Activitypub_notice extends Managed_DataObject
 {
+        /**
+         * Generates a pretty notice from a Notice object
+         *
+         * @param \Notice $notice
+         * @return pretty array to be used in a response
+         */
+        public static function noticeToObject($notice) {
+                $attachments = array ();
+                foreach($notice->attachments()as $attachment) {
+                        $attachments[] = Activitypub_attachment::attachmentToObject ($attachment);
+                }
 
-  public static function noticeToObject($notice)
-  {
-    $attachments = [];
-    foreach ($notice->attachments () as $attachment)
-    {
-      $attachments[] = Activitypub_attachment::attachmentToObject ($attachment);
-    }
+                $tags = array ();
+                foreach($notice->getTags()as $tag) {
+                        if ($tag != "") {       // Hacky workaround to avoid stupid outputs
+                                $tags[] = Activitypub_tag::tagNameToObject($tag);
+                        }
+                }
 
-    $tags = [];
-    foreach ($notice->getTags () as $tag)
-    {
-      if ($tag != "") { // Hacky workaround to avoid stupid outputs
-        $tags[] = Activitypub_tag::tagNameToObject ($tag);
-      }
-    }
-    
-    $to = array ();
-    foreach ($notice->getAttentionProfileIDs () as $to_id) {
-        $to[] = Profile::getById ($to_id)->getUri ();
-    }
-    if (!is_null ($to)) {
-            $to = array("https://www.w3.org/ns/activitystreams#Public");
+                $to = array ();
+                foreach ($notice->getAttentionProfileIDs()as $to_id) {
+                        $to[] = Profile::getById($to_id)->getUri();
+                }
+                if (!is_null($to)) {
+                        $to = array ("https://www.w3.org/ns/activitystreams#Public");
+                }
+
+                $item = [
+                        'id'           => $notice->getUrl (),
+                        'type'         => 'Notice',
+                        'actor'        => $notice->getProfile ()->getUrl (),
+                        'published'    => $notice->getCreated (),
+                        'to'           => $to,
+                        'content'      => $notice->getContent (),
+                        'url'          => $notice->getUrl (),
+                        'reply_to'     => empty($notice->reply_to) ? null : Notice::getById($notice->reply_to)->getUrl (),
+                        'is_local'     => $notice->isLocal (),
+                        'conversation' => intval ($notice->conversation),
+                        'attachment'   => $attachments,
+                        'tag'          => $tags
+                ];
+
+                return $item;
         }
-
-        $item = [
-      'id'           => $notice->getUrl (),
-      'type'         => 'Notice',
-      'actor'        => $notice->getProfile ()->getUrl (),
-      'published'    => $notice->getCreated (),
-      'to'           => $to,
-      'content'      => $notice->getContent (),
-      'url'          => $notice->getUrl (),
-      'reply_to'     => empty($notice->reply_to) ? null : Notice::getById($notice->reply_to)->getUrl (),
-      'is_local'     => $notice->isLocal (),
-      'conversation' => intval ($notice->conversation),
-      'attachment'   => $attachments,
-      'tag'          => $tags
-    ];
-    
-    return $item;
-  }
 }

@@ -2,9 +2,7 @@
 /**
  * GNU social - a federating social network
  *
- * Plugin that handles ActivityPub
- *
- * PHP version 5
+ * ActivityPubPlugin implementation for GNU Social
  *
  * LICENCE: This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -23,91 +21,130 @@
  * @package   GNUsocial
  * @author    Daniel Supernault <danielsupernault@gmail.com>
  * @author    Diogo Cordeiro <diogo@fc.up.pt>
- * @copyright 2014 Free Software Foundation http://fsf.org
+ * @copyright 2018 Free Software Foundation http://fsf.org
  * @license   http://www.fsf.org/licensing/licenses/agpl-3.0.html GNU Affero General Public License version 3.0
  * @link      https://www.gnu.org/software/social/
  */
+if (!defined ('GNUSOCIAL')) {
+        exit(1);
+}
 
-if (!defined('GNUSOCIAL')) { exit(1); }
-
+/**
+ * @category  Plugin
+ * @package   GNUsocial
+ * @author    Daniel Supernault <danielsupernault@gmail.com>
+ * @author    Diogo Cordeiro <diogo@fc.up.pt>
+ * @license   http://www.fsf.org/licensing/licenses/agpl-3.0.html GNU Affero General Public License version 3.0
+ * @link      http://www.gnu.org/software/social/
+ */
 class ActivityPubPlugin extends Plugin
 {
+        /**
+         * Route/Reroute urls
+         *
+         * @param URLMapper $m
+         * @return void
+         */
+        public function onRouterInitialized(URLMapper $m) {
+                ActivityPubURLMapperOverwrite::overwrite_variable ($m, ':nickname',
+                                            ['action' => 'showstream'],
+                                            ['nickname' => Nickname::DISPLAY_FMT],
+                                            'apactorprofile');
 
-    public function onRouterInitialized(URLMapper $m)
-    {
-        ActivityPubURLMapperOverwrite::overwrite_variable($m, ':nickname',
-                                    ['action' => 'showstream'],
-                                    ['nickname' => Nickname::DISPLAY_FMT],
-                                    'apactorprofile');
-        
-        $m->connect(':nickname/liked.json',
-                    ['action'    => 'apActorLikedCollection'],
-                    ['nickname'  => Nickname::DISPLAY_FMT]);
-        
-        $m->connect(':nickname/followers.json',
-                    ['action'    => 'apActorFollowers'],
-                    ['nickname'  => Nickname::DISPLAY_FMT]);
-        
-        $m->connect(':nickname/following.json',
-                    ['action'    => 'apActorFollowing'],
-                    ['nickname'  => Nickname::DISPLAY_FMT]);
-    }
+                $m->connect (':nickname/liked.json',
+                            ['action'    => 'apActorLikedCollection'],
+                            ['nickname'  => Nickname::DISPLAY_FMT]);
 
-    public function onPluginVersion(array &$versions)
-    {
-        $versions[] = [ 'name' => 'ActivityPub',
-                        'version' => GNUSOCIAL_VERSION,
-                        'author' => 'Daniel Supernault, Diogo Cordeiro',
-                        'homepage' => 'https://www.gnu.org/software/social/',
-                        'rawdescription' =>
-                        // Todo: Translation
-                        'Adds ActivityPub Support'];
-        return true;
-    }
+                $m->connect (':nickname/followers.json',
+                            ['action'    => 'apActorFollowers'],
+                            ['nickname'  => Nickname::DISPLAY_FMT]);
+
+                $m->connect (':nickname/following.json',
+                            ['action'    => 'apActorFollowing'],
+                            ['nickname'  => Nickname::DISPLAY_FMT]);
+
+                $m->connect (':nickname/inbox.json',
+                            ['action' => 'apActorInbox'],
+                            ['nickname' => Nickname::DISPLAY_FMT]);
+
+                $m->connect ('inbox.json',
+                            array('action' => 'apSharedInbox'));
+        }
+
+        /**
+         * Plugin version information
+         *
+         * @param array $versions
+         * @return boolean true
+         */
+        public function onPluginVersion (array & $versions) {
+                $versions[] = [ 'name' => 'ActivityPub',
+                                'version' => GNUSOCIAL_VERSION,
+                                'author' => 'Daniel Supernault, Diogo Cordeiro',
+                                'homepage' => 'https://www.gnu.org/software/social/',
+                                'rawdescription' =>
+                                // Todo: Translation
+                                'Adds ActivityPub Support'];
+
+                return true;
+        }
 }
 
 /**
  * Overwrites variables in URL-mapping
- *
  */
 class ActivityPubURLMapperOverwrite extends URLMapper
 {
-    static function overwrite_variable($m, $path, $args, $paramPatterns, $newaction)
-    {
-        $mimes = [
-            'application/activity+json', 
-            'application/ld+json',
-            'application/ld+json; profile="https://www.w3.org/ns/activitystreams"'
-        ];
+        static function overwrite_variable ($m, $path, $args, $paramPatterns, $newaction) {
+                $mimes = [
+                    'application/activity+json',
+                    'application/ld+json',
+                    'application/ld+json; profile="https://www.w3.org/ns/activitystreams"'
+                ];
 
-        if (in_array ($_SERVER["HTTP_ACCEPT"], $mimes) == false) {
-            return true;
+                if (in_array ($_SERVER["HTTP_ACCEPT"], $mimes) == false) {
+                        return true;
+                }
+
+                $m->connect ($path, array('action' => $newaction), $paramPatterns);
+                $regex = self::makeRegex($path, $paramPatterns);
+                foreach ($m->variables as $n => $v) {
+                        if ($v[1] == $regex) {
+                                $m->variables[$n][0]['action'] = $newaction;
+                        }
+                }
         }
-        
-        $m->connect($path, array('action' => $newaction), $paramPatterns);
-        $regex = self::makeRegex($path, $paramPatterns);
-        foreach ($m->variables as $n => $v) {
-            if ($v[1] == $regex) {
-                $m->variables[$n][0]['action'] = $newaction;
-            }
-        }
-    }
 }
 
+/**
+ * Plugin return handler
+ */
 class ActivityPubReturn
 {
-    static function answer ($res)
-    {
-        header('Content-Type: application/activity+json');
-        echo json_encode($res, JSON_UNESCAPED_SLASHES | (isset($_GET["pretty"]) ? JSON_PRETTY_PRINT : null));
-        exit;
-    }
-    static function error ($m, $code=500)
-    {
-        http_response_code ($code);
-        header('Content-Type: application/activity+json');
-        $res[] = Activitypub_error::errorMessageToObject($m);
-        echo json_encode($res, JSON_UNESCAPED_SLASHES);
-        exit;
-    }
+        /**
+         * Return a valid answer
+         *
+         * @param array $res
+         * @return void
+         */
+        static function answer ($res) {
+                header ('Content-Type: application/activity+json');
+                echo json_encode ($res, JSON_UNESCAPED_SLASHES | (isset ($_GET["pretty"]) ? JSON_PRETTY_PRINT : null));
+                exit;
+        }
+
+        /**
+         * Return an error
+         *
+         * @param string $m
+         * @param int32 $code
+         * @return void
+         */
+        static function error ($m, $code = 500) {
+                http_response_code ($code);
+                header ('Content-Type: application/activity+json');
+                $res[] = Activitypub_error::errorMessageToObject ($m);
+                echo json_encode ($res, JSON_UNESCAPED_SLASHES);
+                exit;
+        }
 }
