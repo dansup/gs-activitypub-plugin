@@ -44,28 +44,30 @@ class Activitypub_notice extends Managed_DataObject
     $tags = [];
     foreach ($notice->getTags () as $tag)
     {
-      $tags[] = Activitypub_tag::tagNameToObject ($tag);
+      if ($tag != "") { // Hacky workaround to avoid stupid outputs
+        $tags[] = Activitypub_tag::tagNameToObject ($tag);
+      }
     }
     
-    // todo: fix timestamp formats
-    $item = [
-      'id'           => $notice->getUrl(),
-      'type'         => 'Notice',                 // TODO: handle other types
-      'actor'        => $notice->getProfile()->getUrl(),
+    $to = array ();
+    foreach ($notice->getAttentionProfileIDs () as $to_id) {
+        $to[] = Profile::getById ($to_id)->getUri ();
+    }
+    if (!is_null ($to)) {
+            $to = array("https://www.w3.org/ns/activitystreams#Public");
+        }
+
+        $item = [
+      'id'           => $notice->getUrl (),
+      'type'         => 'Notice',
+      'actor'        => $notice->getProfile ()->getUrl (),
       'published'    => $notice->getCreated (),
-      'to'           => [
-                                                  // TODO: handle proper scope
-                          'https://www.w3.org/ns/activitystreams#Public'
-                        ],
-      'cc'           => [
-                                                  // TODO: add cc's
-                          "{$notice->getProfile()->getUrl()}/subscribers",
-                        ],
-      'content'      => $notice->getContent(),
-      'url'          => $notice->getUrl(),
-      'reply_to'     => empty($notice->reply_to) ? null : Notice::getById($notice->reply_to)->getUrl(),
-      'is_local'     => $notice->isLocal(),
-      'conversation' => intval($notice->conversation),
+      'to'           => $to,
+      'content'      => $notice->getContent (),
+      'url'          => $notice->getUrl (),
+      'reply_to'     => empty($notice->reply_to) ? null : Notice::getById($notice->reply_to)->getUrl (),
+      'is_local'     => $notice->isLocal (),
+      'conversation' => intval ($notice->conversation),
       'attachment'   => $attachments,
       'tag'          => $tags
     ];
