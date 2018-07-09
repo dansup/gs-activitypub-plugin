@@ -34,12 +34,30 @@ use Profile;
 if (!defined('GNUSOCIAL')) { exit(1); }
 
 class Activitypub_Discovery {
+    private $discovered_actor_profiles = array ();
+    
     public function lookup ($url)
     {
+        $this->discovered_actor_profiles = array ();
+        
+        return $this->_lookup ($url);;
+    }
+    
+    private function _lookup ($url)
+    {
         // First check if we already have it locally and, if so, return it
+        // If the local fetch fails: grab it remotely, store locally and return
+        $this->grab_local_user ($url) || $this->grab_remote_user($url);
+
+        return $this->discovered_actor_profiles;
+    }
+    
+    private function grab_local_user ($url) 
+    {
         if (($actor_profile = Profile::getKV ("profileurl", $url)) != false) {
-            return $actor_profile;
-        } else {
+            $this->discovered_actor_profiles[]= $actor_profile;
+            return true;
+        } else { // XXX:
             // Sometimes it is not true that the user is not locally available,
             // mostly when it is a local user and URLs slightly changed
             // e.g.: GS instance owner changed from standard urls to pretty urls
@@ -50,39 +68,61 @@ class Activitypub_Discovery {
             if (substr ($url, 0, $root_url_len) == common_root_url ()) {
                 // Grab the nickname and try to get the user
                 if (($actor_profile = Profile::getKV ("nickname", substr ($url, $root_url_len))) != false) {
-                    return $actor_profile;
+                    $this->discovered_actor_profiles[]= $actor_profile;
+                    return true;
                 }
             }
         }
-
-        // If the local fetch fails: grab it remotely, store locally and return
+        return false;
+    }
+    
+    private function grab_remote_user ($url)
+    {
         $client         = new HTTPClient ();
         $headers        = array();
         $headers[]      = 'Accept: application/ld+json; profile="https://www.w3.org/ns/activitystreams"';
         $headers[]      = 'User-Agent: GNUSocialBot v0.1 - https://gnu.io/social';
         $response       = $client->get ($url, $headers);
-        $this->response = json_decode ($response->getBody (), JSON_UNESCAPED_SLASHES);
         if (!$response->isOk()) {
             throw new NoResultException ("Invalid Actor URL.");
         }
-        return $this->storeProfile ();
-    }
-
-    private function storeProfile ()
-    {
-        $res = $this->response;
-        // Validate response
-        if (!isset ($res["url"], $res["nickname"], $res["display_name"], $res["summary"])) {
-            throw new NoProfileException("Invalid Actor URL.");
+        $res = json_decode ($response->getBody (), JSON_UNESCAPED_SLASHES);
+        if (isset ($res["orderedItems"])) { // It's a potential collection of actors!!!
+            foreach ($res["orderedItems"] as $profile) {
+                if ($this->_lookup ($profile) == false) {
+                    // XXX: Invalid actor found, not sure how we handle those
+                }
+            }
+            // Go through entire collection
+            if (!is_null ($res["next"])) {
+                $this->_lookup ($res["next"]);
+            }
+            return true;
+        } else if ($this->validate_remote_response ($res)) {
+            $this->discovered_actor_profiles[]= $this->store_profile ($res);
+            return true;
         }
-
+        
+        return false;
+    }
+    
+    private function store_profile ($res) {
         $profile             = new Profile;
         $profile->profileurl = $res["url"];
         $profile->nickname   = $res["nickname"];
         $profile->fullname   = $res["display_name"];
         $profile->bio        = substr ($res["summary"], 0, 1000);
         $profile->insert ();
-
+        
         return $profile;
+    }
+
+    private function validate_remote_response ($res)
+    {
+        if (!isset ($res["url"], $res["nickname"], $res["display_name"], $res["summary"])) {
+            return false;
+        }
+        
+        return true;
     }
 }
