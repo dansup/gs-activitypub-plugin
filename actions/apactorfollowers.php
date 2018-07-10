@@ -57,7 +57,11 @@ class apActorFollowersAction extends ManagedAction
                         ActivityPubReturn::error ('Invalid username');
                 }
 
-                $page = intval ($this->trimmed ('page'));
+                if (!isset ($_GET["page"])) {
+                        $page = 1;
+                } else {
+                        $page = intval ($this->trimmed ('page'));
+                }
 
                 if ($page <= 0) {
                         ActivityPubReturn::error ('Invalid page number');

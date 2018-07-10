@@ -45,7 +45,7 @@ class ActivityPubPlugin extends Plugin
          * @param URLMapper $m
          * @return void
          */
-        public function onRouterInitialized(URLMapper $m) {
+        public function onRouterInitialized (URLMapper $m) {
                 ActivityPubURLMapperOverwrite::overwrite_variable ($m, ':nickname',
                                             ['action' => 'showstream'],
                                             ['nickname' => Nickname::DISPLAY_FMT],
@@ -77,7 +77,7 @@ class ActivityPubPlugin extends Plugin
          * @param array $versions
          * @return boolean true
          */
-        public function onPluginVersion (array & $versions) {
+        public function onPluginVersion (array &$versions) {
                 $versions[] = [ 'name' => 'ActivityPub',
                                 'version' => GNUSOCIAL_VERSION,
                                 'author' => 'Daniel Supernault, Diogo Cordeiro',
@@ -87,32 +87,6 @@ class ActivityPubPlugin extends Plugin
                                 'Adds ActivityPub Support'];
 
                 return true;
-        }
-}
-
-/**
- * Overwrites variables in URL-mapping
- */
-class ActivityPubURLMapperOverwrite extends URLMapper
-{
-        static function overwrite_variable ($m, $path, $args, $paramPatterns, $newaction) {
-                $mimes = [
-                    'application/activity+json',
-                    'application/ld+json',
-                    'application/ld+json; profile="https://www.w3.org/ns/activitystreams"'
-                ];
-
-                if (in_array ($_SERVER["HTTP_ACCEPT"], $mimes) == false) {
-                        return true;
-                }
-
-                $m->connect ($path, array('action' => $newaction), $paramPatterns);
-                $regex = self::makeRegex($path, $paramPatterns);
-                foreach ($m->variables as $n => $v) {
-                        if ($v[1] == $regex) {
-                                $m->variables[$n][0]['action'] = $newaction;
-                        }
-                }
         }
 }
 
