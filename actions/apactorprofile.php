@@ -54,7 +54,7 @@ class apActorProfileAction extends ManagedAction
                         $profile = $user->getProfile ();
                 }
                 catch (Exception $e) {
-                        ActivityPubReturn::error ('Invalid username', 404);
+                        ActivityPubReturn::error ('Invalid username.', 404);
                 }
 
                 $res = Activitypub_profile::profileToObject ($profile);

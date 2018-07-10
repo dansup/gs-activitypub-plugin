@@ -53,7 +53,7 @@ class apActorFollowingAction extends ManagedAction
                         $profile = $user->getProfile ();
                         $url     = $profile->profileurl;
                 } catch (Exception $e) {
-                        ActivityPubReturn::error ('Invalid username');
+                        ActivityPubReturn::error ('Invalid username.');
                 }
 
                 if (!isset ($_GET["page"])) {
@@ -63,7 +63,7 @@ class apActorFollowingAction extends ManagedAction
                 }
 
                 if ($page <= 0) {
-                        ActivityPubReturn::error ('Invalid page number');
+                        ActivityPubReturn::error ('Invalid page number.');
                 }
 
                 /* Fetch Following */
@@ -71,8 +71,8 @@ class apActorFollowingAction extends ManagedAction
                         $since = ($page - 1) * PROFILES_PER_MINILIST;
                         $limit = (($page - 1) == 0 ? 1 : $page) * PROFILES_PER_MINILIST;
                         $sub = $profile->getSubscribed($since, $limit);
-                } catch(NoResultException $e) {
-                        ActivityPubReturn::error ('This user is not following anyone');
+                } catch (NoResultException $e) {
+                        ActivityPubReturn::error ('This user is not following anyone.');
                 }
 
                 /* Calculate total items */
@@ -80,11 +80,11 @@ class apActorFollowingAction extends ManagedAction
                 $total_pages = ceil ($total_subs / PROFILES_PER_MINILIST);
 
                 if ($total_pages == 0) {
-                        ActivityPubReturn::error ('This user has no followers');
+                        ActivityPubReturn::error ('This user is not following anyone.');
                 }
 
                 if ($page > $total_pages) {
-                        ActivityPubReturn::error ("There are only {$total_pages} pages");
+                        ActivityPubReturn::error ("There are only {$total_pages} pages.");
                 }
 
                 /* Get followed' URLs */

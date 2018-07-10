@@ -53,7 +53,7 @@ class apActorLikedCollectionAction extends ManagedAction
                         $profile = $user->getProfile ();
                         $url     = $profile->profileurl;
                 } catch (Exception $e) {
-                        ActivityPubReturn::error ('Invalid username');
+                        ActivityPubReturn::error ('Invalid username.');
                 }
 
                 $limit    = intval ($this->trimmed ('limit'));

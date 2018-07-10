@@ -53,7 +53,7 @@ class apActorFollowersAction extends ManagedAction
                         $profile = $user->getProfile ();
                         $url     = $profile->profileurl;
                 } catch (Exception $e) {
-                        ActivityPubReturn::error ('Invalid username');
+                        ActivityPubReturn::error ('Invalid username.');
                 }
 
                 if (!isset ($_GET["page"])) {
@@ -63,7 +63,7 @@ class apActorFollowersAction extends ManagedAction
                 }
 
                 if ($page <= 0) {
-                        ActivityPubReturn::error ('Invalid page number');
+                        ActivityPubReturn::error ('Invalid page number.');
                 }
 
                 /* Fetch Followers */
@@ -73,7 +73,7 @@ class apActorFollowersAction extends ManagedAction
                         $sub   = $profile->getSubscribers ($since, $limit);
                 }
                 catch(NoResultException $e) {
-                        ActivityPubReturn::error ('This user has no followers');
+                        ActivityPubReturn::error ('This user has no followers.');
                 }
 
                 /* Calculate total items */
@@ -81,11 +81,11 @@ class apActorFollowersAction extends ManagedAction
                 $total_pages = ceil ($total_subs / PROFILES_PER_MINILIST);
 
                 if ($total_pages == 0) {
-                        ActivityPubReturn::error ('This user has no followers');
+                        ActivityPubReturn::error ('This user has no followers.');
                 }
 
                 if ($page > $total_pages) {
-                        ActivityPubReturn::error ("There are only {$total_pages} pages");
+                        ActivityPubReturn::error ("There are only {$total_pages} pages.");
                 }
 
                 /* Get followers' URLs */
