@@ -26,12 +26,12 @@
  * @link      https://www.gnu.org/software/social/
  */
 if (!defined ('GNUSOCIAL')) {
-        exit(1);
+        exit (1);
 }
 
 try {
         Activitypub_notice::getByUri ($data->object)->deleteAs ($actor_profile);
         ActivityPubReturn::answer ("Notice deleted successfully.");
 } catch(Exception $ex) {
-        ActivityPubReturn::error ($ex->getMessage(), 403);
+        ActivityPubReturn::error ($ex->getMessage (), 403);
 }

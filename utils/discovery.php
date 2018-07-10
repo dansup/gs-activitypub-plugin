@@ -22,25 +22,23 @@ use Profile;
  *
  * @category  Plugin
  * @package   GNUsocial
- * @author    Daniel Supernault <danielsupernault@gmail.com>
  * @author    Diogo Cordeiro <diogo@fc.up.pt>
+ * @author    Daniel Supernault <danielsupernault@gmail.com>
  * @copyright 2018 Free Software Foundation http://fsf.org
  * @license   http://www.fsf.org/licensing/licenses/agpl-3.0.html GNU Affero General Public License version 3.0
  * @link      https://www.gnu.org/software/social/
  */
 if (!defined ('GNUSOCIAL')) {
-        exit(1);
+        exit (1);
 }
 
 /**
  * @category  Plugin
  * @package   GNUsocial
- * @author    Daniel Supernault <danielsupernault@gmail.com>
  * @author    Diogo Cordeiro <diogo@fc.up.pt>
  * @license   http://www.fsf.org/licensing/licenses/agpl-3.0.html GNU Affero General Public License version 3.0
  * @link      http://www.gnu.org/software/social/
  */
-
 class Activitypub_Discovery
 {
         private $discovered_actor_profiles = array ();

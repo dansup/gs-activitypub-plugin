@@ -26,14 +26,13 @@
  * @link      https://www.gnu.org/software/social/
  */
 if (!defined ('GNUSOCIAL')) {
-        exit(1);
+        exit (1);
 }
 
 /**
  * @category  Plugin
  * @package   GNUsocial
  * @author    Diogo Cordeiro <diogo@fc.up.pt>
- * @author    Daniel Supernault <danielsupernault@gmail.com>
  * @license   http://www.fsf.org/licensing/licenses/agpl-3.0.html GNU Affero General Public License version 3.0
  * @link      http://www.gnu.org/software/social/
  */

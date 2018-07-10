@@ -1,13 +1,8 @@
 <?php
-require_once dirname (__DIR__) . DIRECTORY_SEPARATOR . "utils" . DIRECTORY_SEPARATOR . "discovery.php";
-use Activitypub_Discovery;
-
 /**
  * GNU social - a federating social network
  *
- * Todo: Description
- *
- * PHP version 5
+ * ActivityPubPlugin implementation for GNU Social
  *
  * LICENCE: This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -26,80 +21,93 @@ use Activitypub_Discovery;
  * @package   GNUsocial
  * @author    Diogo Cordeiro <diogo@fc.up.pt>
  * @author    Daniel Supernault <danielsupernault@gmail.com>
- * @copyright 2015 Free Software Foundaction, Inc.
+ * @copyright 2018 Free Software Foundation http://fsf.org
  * @license   http://www.fsf.org/licensing/licenses/agpl-3.0.html GNU Affero General Public License version 3.0
- * @link      https://gnu.io/social
+ * @link      https://www.gnu.org/software/social/
  */
+if (!defined ('GNUSOCIAL')) {
+        exit (1);
+}
 
-if (!defined('GNUSOCIAL')) { exit(1); }
-
+/**
+ * @category  Plugin
+ * @package   GNUsocial
+ * @author    Diogo Cordeiro <diogo@fc.up.pt>
+ * @license   http://www.fsf.org/licensing/licenses/agpl-3.0.html GNU Affero General Public License version 3.0
+ * @link      http://www.gnu.org/software/social/
+ */
 class apActorInboxAction extends ManagedAction
 {
-    protected $needLogin = false;
-    protected $canPost   = true;
+        protected $needLogin = false;
+        protected $canPost   = true;
 
-    protected function handle ()
-    {
-        $nickname  = $this->trimmed ('nickname');
-        try {
-          $user    = User::getByNickname ($nickname);
-          $profile = $user->getProfile ();
-          $url     = $profile->profileurl;
-        } catch (Exception $e) {
-          ActivityPubReturn::error ("Invalid username.");
-        }
+        /**
+         * Handle the Actor Inbox request
+         *
+         * @return void
+         */
+        protected function handle ()
+        {
+                $nickname  = $this->trimmed ('nickname');
+                try {
+                        $user    = User::getByNickname ($nickname);
+                        $profile = $user->getProfile ();
+                        $url     = $profile->profileurl;
+                } catch (Exception $e) {
+                        ActivityPubReturn::error ("Invalid username.");
+                }
 
-        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-            ActivityPubReturn::error ("C2S not implemented just yet.");
-        }
+                if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+                        ActivityPubReturn::error ("C2S not implemented just yet.");
+                }
 
-        $data = json_decode (file_get_contents ('php://input'));
+                $data = json_decode (file_get_contents ('php://input'));
 
-        // Validate data
-        if (!(isset($data->type))) {
-            ActivityPubReturn::error ("Type was not specified.");
-        }
-        if (!isset($data->actor)) {
-            ActivityPubReturn::error ("Actor was not specified.");
-        }
-        if (!isset($data->object)) {
-            ActivityPubReturn::error ("Object was not specified.");
-        }
+                // Validate data
+                if (!(isset($data->type))) {
+                        ActivityPubReturn::error ("Type was not specified.");
+                }
+                if (!isset($data->actor)) {
+                        ActivityPubReturn::error ("Actor was not specified.");
+                }
+                if (!isset($data->object)) {
+                        ActivityPubReturn::error ("Object was not specified.");
+                }
 
-        // Get valid Actor object
-        try {
-            require_once dirname (__DIR__) . DIRECTORY_SEPARATOR . "utils" . DIRECTORY_SEPARATOR . "discovery.php";
-            $actor_profile = new Activitypub_Discovery;
-            $actor_profile = $actor_profile->lookup($data->actor);
-            $actor_profile = $actor_profile[0];
-        } catch (Exception $e) {
-            ActivityPubReturn::error ("Invalid Actor.", 404);
-        }
+                // Get valid Actor object
+                try {
+                        require_once dirname (__DIR__) . DIRECTORY_SEPARATOR . "utils" . DIRECTORY_SEPARATOR . "discovery.php";
+                        $actor_profile = new Activitypub_Discovery;
+                        $actor_profile = $actor_profile->lookup ($data->actor);
+                        $actor_profile = $actor_profile[0];
+                } catch (Exception $e) {
+                        ActivityPubReturn::error ("Invalid Actor.", 404);
+                }
 
-        $to_profiles = array ($user);
+                $to_profiles = array ($user);
 
-        // Process request
-        switch ($data->type) {
-            case "Create":
-                require_once __DIR__ . DIRECTORY_SEPARATOR . "inbox" . DIRECTORY_SEPARATOR . "Create.php";
-                break;
-            case "Delete":
-                require_once __DIR__ . DIRECTORY_SEPARATOR . "inbox" . DIRECTORY_SEPARATOR . "Delete.php";
-                break;
-            case "Follow":
-                require_once __DIR__ . DIRECTORY_SEPARATOR . "inbox" . DIRECTORY_SEPARATOR . "Follow.php";
-                break;
-            case "Like":
-                require_once __DIR__ . DIRECTORY_SEPARATOR . "inbox" . DIRECTORY_SEPARATOR . "Like.php";
-                break;
-            case "Undo":
-                require_once __DIR__ . DIRECTORY_SEPARATOR . "inbox" . DIRECTORY_SEPARATOR . "Undo.php";
-                break;
-            case "Announce":
-                require_once __DIR__ . DIRECTORY_SEPARATOR . "inbox" . DIRECTORY_SEPARATOR . "Announce.php";
-                break;
-            default:
-                ActivityPubReturn::error ("Invalid type value.");
+                // Process request
+                switch ($data->type) {
+                        case "Create":
+                                require_once __DIR__ . DIRECTORY_SEPARATOR . "inbox" . DIRECTORY_SEPARATOR . "Create.php";
+                                break;
+                        case "Delete":
+                                require_once __DIR__ . DIRECTORY_SEPARATOR . "inbox" . DIRECTORY_SEPARATOR . "Delete.php";
+                                break;
+                        case "Follow":
+                                require_once __DIR__ . DIRECTORY_SEPARATOR . "inbox" . DIRECTORY_SEPARATOR . "Follow.php";
+                                break;
+                        case "Like":
+                                require_once __DIR__ . DIRECTORY_SEPARATOR . "inbox" . DIRECTORY_SEPARATOR . "Like.php";
+                                break;
+                        case "Undo":
+                                require_once __DIR__ . DIRECTORY_SEPARATOR . "inbox" . DIRECTORY_SEPARATOR . "Undo.php";
+                                break;
+                        case "Announce":
+                                require_once __DIR__ . DIRECTORY_SEPARATOR . "inbox" . DIRECTORY_SEPARATOR . "Announce.php";
+                                break;
+                        default:
+                                ActivityPubReturn::error ("Invalid type value.");
+                }
         }
-    }
 }

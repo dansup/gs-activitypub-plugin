@@ -26,7 +26,7 @@
  * @link      https://www.gnu.org/software/social/
  */
 if (!defined ('GNUSOCIAL')) {
-        exit(1);
+        exit (1);
 }
 
 // Get valid Object profile
@@ -44,6 +44,6 @@ try {
         } else {
                 ActivityPubReturn::error ("Already following.", 409);
         }
-} catch(Exception $ex) {
+} catch (Exception $ex) {
         ActivityPubReturn::error ("Invalid Object Actor URL.", 404);
 }

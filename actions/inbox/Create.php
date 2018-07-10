@@ -26,7 +26,7 @@
  * @link      https://www.gnu.org/software/social/
  */
 if (!defined ('GNUSOCIAL')) {
-        exit(1);
+        exit (1);
 }
 
 $valid_object_types = array ("Note");
@@ -70,7 +70,7 @@ if (Notice::contentTooLong ($content)) {
         ActivityPubReturn::error ("That's too long. Maximum notice size is %d character.");
 }
 
-$options = array('source' = >'web', 'uri' = >$data->id);
+$options = array ('source' => 'web', 'uri' => $data->id);
 // $options gets filled with possible scoping settings
 ToSelector::fillActivity ($this, $act, $options);
 

@@ -26,7 +26,7 @@
  * @link      https://www.gnu.org/software/social/
  */
 if (!defined ('GNUSOCIAL')) {
-        exit(1);
+        exit (1);
 }
 
 /**
@@ -45,22 +45,22 @@ class Activitypub_notice extends Managed_DataObject
          * @param \Notice $notice
          * @return pretty array to be used in a response
          */
-        public static function noticeToObject($notice) {
+        public static function noticeToObject ($notice) {
                 $attachments = array ();
-                foreach($notice->attachments()as $attachment) {
+                foreach($notice->attachments () as $attachment) {
                         $attachments[] = Activitypub_attachment::attachmentToObject ($attachment);
                 }
 
                 $tags = array ();
                 foreach($notice->getTags()as $tag) {
                         if ($tag != "") {       // Hacky workaround to avoid stupid outputs
-                                $tags[] = Activitypub_tag::tagNameToObject($tag);
+                                $tags[] = Activitypub_tag::tagNameToObject ($tag);
                         }
                 }
 
                 $to = array ();
-                foreach ($notice->getAttentionProfileIDs()as $to_id) {
-                        $to[] = Profile::getById($to_id)->getUri();
+                foreach ($notice->getAttentionProfileIDs () as $to_id) {
+                        $to[] = Profile::getById ($to_id)->getUri ();
                 }
                 if (!is_null($to)) {
                         $to = array ("https://www.w3.org/ns/activitystreams#Public");

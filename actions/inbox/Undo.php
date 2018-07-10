@@ -29,7 +29,7 @@ use Activitypub_Discovery;
  * @link      https://www.gnu.org/software/social/
  */
 if (!defined ('GNUSOCIAL')) {
-        exit(1);
+        exit (1);
 }
 
 // Validate data

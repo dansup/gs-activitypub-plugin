@@ -26,7 +26,7 @@
  * @link      https://www.gnu.org/software/social/
  */
 if (!defined ('GNUSOCIAL')) {
-        exit(1);
+        exit (1);
 }
 
 /**
@@ -87,6 +87,32 @@ class ActivityPubPlugin extends Plugin
                                 'Adds ActivityPub Support'];
 
                 return true;
+        }
+}
+
+/**
+ * Overwrites variables in URL-mapping
+ */
+class ActivityPubURLMapperOverwrite extends URLMapper
+{
+        static function overwrite_variable ($m, $path, $args, $paramPatterns, $newaction) {
+                $mimes = [
+                    'application/activity+json',
+                    'application/ld+json',
+                    'application/ld+json; profile="https://www.w3.org/ns/activitystreams"'
+                ];
+
+                if (in_array ($_SERVER["HTTP_ACCEPT"], $mimes) == false) {
+                        return true;
+                }
+
+                $m->connect ($path, array('action' => $newaction), $paramPatterns);
+                $regex = self::makeRegex($path, $paramPatterns);
+                foreach ($m->variables as $n => $v) {
+                        if ($v[1] == $regex) {
+                                $m->variables[$n][0]['action'] = $newaction;
+                        }
+                }
         }
 }
 
