@@ -29,26 +29,21 @@ if (!defined ('GNUSOCIAL')) {
         exit(1);
 }
 
-/**
- * @category  Plugin
- * @package   GNUsocial
- * @author    Diogo Cordeiro <diogo@fc.up.pt>
- * @author    Daniel Supernault <danielsupernault@gmail.com>
- * @license   http://www.fsf.org/licensing/licenses/agpl-3.0.html GNU Affero General Public License version 3.0
- * @link      http://www.gnu.org/software/social/
- */
-class Activitypub_error extends Managed_DataObject
-{
-        /**
-         * Generates a pretty error from a string
-         *
-         * @param string $m
-         * @return pretty array to be used in a response
-         */
-        public static function errorMessageToObject ($m) {
-                $res = [
-                        'error'=> $m
-                ];
-                return $res;
+// Get valid Object profile
+try {
+        $object_profile = new Activitypub_Discovery;
+        $object_profile = $object_profile->lookup ($data->object);
+} catch(Exception $e) {
+        ActivityPubReturn::error ("Invalid Object Actor URL.", 404);
+}
+
+try {
+        if (!Subscription::exists ($actor_profile, $object_profile)) {
+                Subscription::start ($actor_profile, $object_profile);
+                ActivityPubReturn::answer ("You are now following this person.");
+        } else {
+                ActivityPubReturn::error ("Already following.", 409);
         }
+} catch(Exception $ex) {
+        ActivityPubReturn::error ("Invalid Object Actor URL.", 404);
 }
