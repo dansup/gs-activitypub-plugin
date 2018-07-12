@@ -46,7 +46,8 @@ class apActorLikedCollectionAction extends ManagedAction
          *
          * @return void
          */
-        protected function handle () {
+        protected function handle ()
+        {
                 $nickname = $this->trimmed ('nickname');
                 try {
                         $user    = User::getByNickname ($nickname);
@@ -96,13 +97,14 @@ class apActorLikedCollectionAction extends ManagedAction
          * Take a fave object and turns it in a pretty array to be used
          * as a plugin answer
          *
-         * @param \Fave $fave_object
+         * @param Fave $fave_object
          * @return array pretty array representating a Fave
          */
-        protected function pretty_fave ($fave_object) {
+        protected function pretty_fave ($fave_object)
+        {
                 $res = array("uri" => $fave_object->uri,
                              "created" => $fave_object->created,
-                             "object" => Activitypub_notice::noticeToObject (Notice::getByID ($fave_object->notice_id)));
+                             "object" => Activitypub_notice::notice_to_array (Notice::getByID ($fave_object->notice_id)));
 
                 return $res;
         }
@@ -114,10 +116,11 @@ class apActorLikedCollectionAction extends ManagedAction
          * @param int32 $limit
          * @param int32 $since_id
          * @param int32 $max_id
-         * @return \Fave fetchable fave collection
+         * @return Fave fetchable fave collection
          */
         private static function fetch_faves ($user_id, $limit = 40, $since_id = null,
-                                             $max_id = null) {
+                                             $max_id = null)
+        {
                 $fav = new Fave ();
 
                 $fav->user_id = $user_id;

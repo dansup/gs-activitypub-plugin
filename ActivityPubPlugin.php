@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . DIRECTORY_SEPARATOR . "utils" . DIRECTORY_SEPARATOR . "postman.php";
 /**
  * GNU social - a federating social network
  *
@@ -45,12 +46,13 @@ class ActivityPubPlugin extends Plugin
          * @param URLMapper $m
          * @return void
          */
-        public function onRouterInitialized (URLMapper $m) {
+        public function onRouterInitialized (URLMapper $m)
+        {
                 ActivityPubURLMapperOverwrite::overwrite_variable ($m, ':nickname',
                                             ['action' => 'showstream'],
                                             ['nickname' => Nickname::DISPLAY_FMT],
-                                            'apactorprofile');
-
+                                            'apActorProfile');
+                
                 $m->connect (':nickname/liked.json',
                             ['action'    => 'apActorLikedCollection'],
                             ['nickname'  => Nickname::DISPLAY_FMT]);
@@ -77,7 +79,8 @@ class ActivityPubPlugin extends Plugin
          * @param array $versions
          * @return boolean true
          */
-        public function onPluginVersion (array &$versions) {
+        public function onPluginVersion (array &$versions)
+        {
                 $versions[] = [ 'name' => 'ActivityPub',
                                 'version' => GNUSOCIAL_VERSION,
                                 'author' => 'Daniel Supernault, Diogo Cordeiro',
@@ -85,6 +88,74 @@ class ActivityPubPlugin extends Plugin
                                 'rawdescription' =>
                                 // Todo: Translation
                                 'Adds ActivityPub Support'];
+
+                return true;
+        }
+
+        /**
+         * Make sure necessary tables are filled out.
+         */
+        function onCheckSchema ()
+        {
+            $schema = Schema::get ();
+            $schema->ensureTable ('Activitypub_profile', Activitypub_profile::schemaDef());
+            return true;
+        }
+        
+            /********************************************************
+             *                    Delivery Events                   *
+             ********************************************************/
+
+        /**
+         * Having established a remote subscription, send a notification to the
+         * remote ActivityPub profile's endpoint.
+         *
+         * @param Profile $profile  subscriber
+         * @param Profile $other    subscribee
+         * @return hook return value
+         * @throws Exception
+         */
+        function onEndSubscribe (Profile $profile, Profile $other)
+        {
+                if (!$profile->isLocal () || $other->isLocal ()) {
+                        return true;
+                }
+
+                try {
+                        $other = Activitypub_profile::fromProfile ($other);
+                } catch (Exception $e) {
+                        return true;
+                }
+
+                $postman = new Activitypub_postman ($profile, array ($other));
+
+                $postman->follow ();
+
+                return true;
+        }
+
+        /**
+         * Notify remote server on unsubscribe.
+         *
+         * @param Profile $profile
+         * @param Profile $other
+         * @return hook return value
+         */
+        function onEndUnsubscribe (Profile $profile, Profile $other)
+        {
+                if (!$profile->isLocal () || $other->isLocal ()) {
+                        return true;
+                }
+
+                try {
+                        $other = Activitypub_profile::fromProfile ($other);
+                } catch (Exception $e) {
+                        return true;
+                }
+
+                $postman = new Activitypub_postman ($profile, array ($other));
+
+                $postman->undo_follow ();
 
                 return true;
         }
@@ -127,7 +198,8 @@ class ActivityPubReturn
          * @param array $res
          * @return void
          */
-        static function answer ($res) {
+        static function answer ($res)
+        {
                 header ('Content-Type: application/activity+json');
                 echo json_encode ($res, JSON_UNESCAPED_SLASHES | (isset ($_GET["pretty"]) ? JSON_PRETTY_PRINT : null));
                 exit;
@@ -140,10 +212,11 @@ class ActivityPubReturn
          * @param int32 $code
          * @return void
          */
-        static function error ($m, $code = 500) {
+        static function error ($m, $code = 500)
+        {
                 http_response_code ($code);
                 header ('Content-Type: application/activity+json');
-                $res[] = Activitypub_error::errorMessageToObject ($m);
+                $res[] = Activitypub_error::error_message_to_array ($m);
                 echo json_encode ($res, JSON_UNESCAPED_SLASHES);
                 exit;
         }

@@ -44,7 +44,8 @@ class Activitypub_error extends Managed_DataObject
          * @param string $m
          * @return pretty array to be used in a response
          */
-        public static function errorMessageToObject ($m) {
+        public static function error_message_to_array ($m)
+        {
                 $res = [
                         'error'=> $m
                 ];

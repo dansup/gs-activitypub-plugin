@@ -41,10 +41,11 @@ class Activitypub_tag extends Managed_DataObject
         /**
          * Generates a pretty tag from a Tag object
          *
-         * @param \Tag $tag
+         * @param Tag $tag
          * @return pretty array to be used in a response
          */
-        public static function tagNameToObject ($tag) {
+        public static function tag_to_array ($tag)
+        {
                 $res = [
                 '@context'          => [
                 "https://www.w3.org/ns/activitystreams",

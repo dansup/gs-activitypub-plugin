@@ -31,7 +31,11 @@ if (!defined ('GNUSOCIAL')) {
 
 try {
         Fave::addNew ($actor_profile, Notice::getByUri ($data->object));
-        ActivityPubReturn::answer ("Notice favorited successfully.");
-} catch (Exception $ex) {
-        ActivityPubReturn::error ($ex->getMessage (), 403);
+        $res = array ("@context" => "https://www.w3.org/ns/activitystreams",
+                  "type"   => "Like",
+                  "actor"  => $data->actor,
+                  "object" => $data->object);
+        ActivityPubReturn::answer ($res);
+} catch (Exception $e) {
+        ActivityPubReturn::error ($e->getMessage (), 403);
 }

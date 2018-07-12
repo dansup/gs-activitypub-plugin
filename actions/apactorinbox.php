@@ -76,8 +76,8 @@ class apActorInboxAction extends ManagedAction
 
                 // Get valid Actor object
                 try {
-                        require_once dirname (__DIR__) . DIRECTORY_SEPARATOR . "utils" . DIRECTORY_SEPARATOR . "discovery.php";
-                        $actor_profile = new Activitypub_Discovery;
+                        require_once dirname (__DIR__) . DIRECTORY_SEPARATOR . "utils" . DIRECTORY_SEPARATOR . "explorer.php";
+                        $actor_profile = new Activitypub_explorer;
                         $actor_profile = $actor_profile->lookup ($data->actor);
                         $actor_profile = $actor_profile[0];
                 } catch (Exception $e) {

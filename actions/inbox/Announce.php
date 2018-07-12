@@ -30,8 +30,8 @@ if (!defined ('GNUSOCIAL')) {
 }
 
 try {
-        Notice::getByUri ($data->object)->repeat ($actor_profile, "api");
+        Notice::getByUri ($data->object)->repeat ($actor_profile, "ActivityPub");
         ActivityPubReturn::answer ("Notice repeated successfully.");
-} catch(Exception $ex) {
-        ActivityPubReturn::error ($ex->getMessage (), 403);
+} catch (Exception $e) {
+        ActivityPubReturn::error ($e->getMessage (), 403);
 }

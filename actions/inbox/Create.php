@@ -32,7 +32,7 @@ if (!defined ('GNUSOCIAL')) {
 $valid_object_types = array ("Note");
 
 // Validate data
-if (! (isset($data->object->type) && in_array ($data->object->type, $valid_object_types))) {
+if (!(isset ($data->object->type) && in_array ($data->object->type, $valid_object_types))) {
         ActivityPubReturn::error ("Invalid Object type.");
 }
 if (!isset ($data->object->content)) {
@@ -51,17 +51,17 @@ $act->context = new ActivityContext ();
 // Is this a reply?
 if (isset ($data->object->reply_to)) {
         $reply_to = Notice::getByUri ($data->object->reply_to);
-        $act->context->replyToID  = $reply_to->getUri ();
+        $act->context->replyToID = $reply_to->getUri ();
         $act->context->replyToUrl = $data->object->reply_to;
 } else {
         $reply_to = null;
 }
 
-$act->context->attention = common_get_attentions($content, $actor_profile, $reply_to);
+$act->context->attention = common_get_attentions ($content, $actor_profile, $reply_to);
 
 foreach ($to_profiles as $to)
 {
-        $act->context->attention[$to->getUri()] = "http://activitystrea.ms/schema/1.0/person";
+        $act->context->attention[$to->getUri ()] = "http://activitystrea.ms/schema/1.0/person";
 }
 
 // Reject notice if it is too long (without the HTML)
@@ -70,7 +70,7 @@ if (Notice::contentTooLong ($content)) {
         ActivityPubReturn::error ("That's too long. Maximum notice size is %d character.");
 }
 
-$options = array ('source' => 'web', 'uri' => $data->id);
+$options = array ('source' => 'ActivityPub', 'uri' => $data->id);
 // $options gets filled with possible scoping settings
 ToSelector::fillActivity ($this, $act, $options);
 
@@ -86,7 +86,7 @@ try {
                   "id"     => $data->id,
                   "type"   => "Create",
                   "actor"  => $data->actor,
-                  "object" => Activitypub_notice::noticeToObject (Notice::saveActivity ($act, $actor_profile, $options)));
+                  "object" => Activitypub_notice::notice_to_array (Notice::saveActivity ($act, $actor_profile, $options)));
         ActivityPubReturn::answer ($res);
 } catch (Exception $e) {
         ActivityPubReturn::error ($e->getMessage ());

@@ -46,7 +46,8 @@ class apActorFollowersAction extends ManagedAction
          *
          * @return void
          */
-        protected function handle () {
+        protected function handle ()
+        {
                 $nickname = $this->trimmed ('nickname');
                 try {
                         $user    = User::getByNickname ($nickname);
@@ -71,8 +72,7 @@ class apActorFollowersAction extends ManagedAction
                         $since = ($page - 1) * PROFILES_PER_MINILIST;
                         $limit = (($page - 1) == 0 ? 1 : $page) * PROFILES_PER_MINILIST;
                         $sub   = $profile->getSubscribers ($since, $limit);
-                }
-                catch(NoResultException $e) {
+                } catch (NoResultException $e) {
                         ActivityPubReturn::error ('This user has no followers.');
                 }
 

@@ -42,19 +42,20 @@ class Activitypub_notice extends Managed_DataObject
         /**
          * Generates a pretty notice from a Notice object
          *
-         * @param \Notice $notice
+         * @param Notice $notice
          * @return pretty array to be used in a response
          */
-        public static function noticeToObject ($notice) {
+        public static function notice_to_array ($notice)
+        {
                 $attachments = array ();
                 foreach($notice->attachments () as $attachment) {
-                        $attachments[] = Activitypub_attachment::attachmentToObject ($attachment);
+                        $attachments[] = Activitypub_attachment::attachment_to_array ($attachment);
                 }
 
                 $tags = array ();
                 foreach($notice->getTags()as $tag) {
                         if ($tag != "") {       // Hacky workaround to avoid stupid outputs
-                                $tags[] = Activitypub_tag::tagNameToObject ($tag);
+                                $tags[] = Activitypub_tag::tag_to_array ($tag);
                         }
                 }
 

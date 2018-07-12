@@ -41,10 +41,11 @@ class Activitypub_attachment extends Managed_DataObject
         /**
          * Generates a pretty array from an Attachment object
          *
-         * @param \Attachment $attachment
+         * @param Attachment $attachment
          * @return pretty array to be used in a response
          */
-        public static function attachmentToObject ($attachment) {
+        public static function attachment_to_array ($attachment)
+        {
                 $res = [
                         '@context'  => [
                                 "https://www.w3.org/ns/activitystreams",

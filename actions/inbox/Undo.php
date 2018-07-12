@@ -1,7 +1,4 @@
 <?php
-
-use Activitypub_Discovery;
-
 /**
  * GNU social - a federating social network
  *
@@ -45,10 +42,10 @@ case "Like":
                         ActivityPubReturn::error ("Object Notice URL was not specified.");
                 }
 
-                Fave::removeEntry ($actor_profile, Notice::getByUri($data->object->object));
+                Fave::removeEntry ($actor_profile, Notice::getByUri ($data->object->object));
                 ActivityPubReturn::answer ("Notice disfavorited successfully.");
         } catch (Exception $e) {
-                ActivityPubReturn::error ($e->getMessage(), 403);
+                ActivityPubReturn::error ($e->getMessage (), 403);
         }
         break;
 case "Follow":
@@ -58,8 +55,8 @@ case "Follow":
         }
         // Get valid Object profile
         try {
-                $object_profile = new Activitypub_Discovery;
-                $object_profile = $object_profile->lookup ($data->object->object);
+                $object_profile = new Activitypub_explorer;
+                $object_profile = $object_profile->lookup ($data->object->object)[0];
         } catch (Exception $e) {
                 ActivityPubReturn::error ("Invalid Object Actor URL.", 404);
         }
@@ -71,7 +68,7 @@ case "Follow":
                 } else {
                         ActivityPubReturn::error ("You are not following this person already.", 409);
                 }
-        } catch (Exception $ex) {
+        } catch (Exception $e) {
                 ActivityPubReturn::error ("Invalid Object Actor URL.", 404);
         }
         break;

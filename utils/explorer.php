@@ -1,7 +1,4 @@
 <?php
-
-use Profile;
-
 /**
  * GNU social - a federating social network
  *
@@ -39,7 +36,7 @@ if (!defined ('GNUSOCIAL')) {
  * @license   http://www.fsf.org/licensing/licenses/agpl-3.0.html GNU Affero General Public License version 3.0
  * @link      http://www.gnu.org/software/social/
  */
-class Activitypub_Discovery
+class Activitypub_explorer
 {
         private $discovered_actor_profiles = array ();
 
@@ -49,7 +46,7 @@ class Activitypub_Discovery
          * so that there is no erroneous data
          *
          * @param string $url User's url
-         * @return array of \Profile objects
+         * @return array of Profile objects
          */
         public function lookup ($url)
         {
@@ -64,13 +61,16 @@ class Activitypub_Discovery
          * $discovered_actor_profiles array
          *
          * @param string $url User's url
-         * @return array of \Profile objects
+         * @return array of Profile objects
          */
         private function _lookup ($url)
         {
                 // First check if we already have it locally and, if so, return it
                 // If the local fetch fails: grab it remotely, store locally and return
-                $this->grab_local_user ($url) || $this->grab_remote_user($url);
+                if (! ($this->grab_local_user ($url) || $this->grab_remote_user ($url))) {
+                    throw new Exception ("User not found");
+                }
+
 
                 return $this->discovered_actor_profiles;
         }
@@ -84,7 +84,7 @@ class Activitypub_Discovery
          */
         private function grab_local_user ($url)
         {
-                if (($actor_profile = Profile::getKV ("profileurl", $url)) != false) {
+                if (($actor_profile = self::get_profile_by_url ($url)) != false) {
                         $this->discovered_actor_profiles[]= $actor_profile;
                         return true;
                 } else {
@@ -115,14 +115,15 @@ class Activitypub_Discovery
          * @param string $url User's url
          * @return boolean success state
          */
-        private function grab_remote_user ($url) {
+        private function grab_remote_user ($url)
+        {
                 $client    = new HTTPClient ();
                 $headers   = array();
                 $headers[] = 'Accept: application/ld+json; profile="https://www.w3.org/ns/activitystreams"';
                 $headers[] = 'User-Agent: GNUSocialBot v0.1 - https://gnu.io/social';
                 $response  = $client->get ($url, $headers);
-                if (!$response->isOk()) {
-                    throw new NoResultException ("Invalid Actor URL.");
+                if (!$response->isOk ()) {
+                    throw new Exception ("Invalid Actor URL.");
                 }
                 $res = json_decode ($response->getBody (), JSON_UNESCAPED_SLASHES);
                 if (isset ($res["orderedItems"])) { // It's a potential collection of actors!!!
@@ -148,17 +149,21 @@ class Activitypub_Discovery
          * Save remote user profile in local instance
          *
          * @param array $res remote response
-         * @return \Profile remote Profile object
+         * @return Profile remote Profile object
          */
-        private function store_profile ($res) {
-                $profile             = new Profile;
-                $profile->profileurl = $res["url"];
-                $profile->nickname   = $res["nickname"];
-                $profile->fullname   = $res["display_name"];
-                $profile->bio        = substr ($res["summary"], 0, 1000);
-                $profile->insert ();
+        private function store_profile ($res)
+        {
+                $aprofile                 = new Activitypub_profile;
+                $aprofile->uri            = $res["url"];
+                $aprofile->nickname       = $res["nickname"];
+                $aprofile->fullname       = $res["display_name"];
+                $aprofile->bio            = substr ($res["summary"], 0, 1000);
+                $aprofile->inboxuri       = $res["inbox"];
+                $aprofile->sharedInboxuri = $res["sharedInbox"];
 
-                return $profile;
+                $aprofile->doInsert ();
+
+                return $aprofile->localProfile ();
         }
 
         /**
@@ -168,11 +173,37 @@ class Activitypub_Discovery
          * @param array $res remote response
          * @return boolean success state
          */
-        private function validate_remote_response ($res) {
-                if (!isset ($res["url"], $res["nickname"], $res["display_name"], $res["summary"])) {
+        private function validate_remote_response ($res)
+        {
+                if (!isset ($res["url"], $res["nickname"], $res["display_name"], $res["summary"], $res["inbox"], $res["sharedInbox"])) {
                         return false;
                 }
 
                 return true;
+        }
+
+        /**
+         * Get a profile from it's profileurl
+         * Unfortunately GNU Social cache is not truly reliable when handling
+         * potential ActivityPub remote profiles, as so it is important to use
+         * this hacky workaround (at least for now)
+         *
+         * @param string $v URL
+         * @return boolean|Profile false if fails | Profile object if successful
+         */
+        static function get_profile_by_url ($v)
+        {
+                $i = Managed_DataObject::getcached(Profile, "profileurl", $v);
+                if (empty ($i)) { // false = cache miss
+                        $i = new Profile;
+                        $result = $i->get ("profileurl", $v);
+                        if ($result) {
+                                // Hit!
+                                $i->encache();
+                        } else {
+                            return false;
+                        }
+                }
+                return $i;
         }
 }

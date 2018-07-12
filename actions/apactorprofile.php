@@ -47,7 +47,8 @@ class apActorProfileAction extends ManagedAction
          *
          * @return void
          */
-        protected function handle() {
+        protected function handle()
+        {
                 $nickname = $this->trimmed ('nickname');
                 try {
                         $user    = User::getByNickname ($nickname);
@@ -57,7 +58,7 @@ class apActorProfileAction extends ManagedAction
                         ActivityPubReturn::error ('Invalid username.', 404);
                 }
 
-                $res = Activitypub_profile::profileToObject ($profile);
+                $res = Activitypub_profile::profile_to_array ($profile);
 
                 ActivityPubReturn::answer ($res);
         }

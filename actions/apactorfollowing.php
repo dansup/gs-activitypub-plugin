@@ -46,7 +46,8 @@ class apActorFollowingAction extends ManagedAction
          *
          * @return void
          */
-        protected function handle () {
+        protected function handle ()
+        {
                 $nickname = $this->trimmed ('nickname');
                 try {
                         $user    = User::getByNickname ($nickname);
@@ -70,7 +71,7 @@ class apActorFollowingAction extends ManagedAction
                 try {
                         $since = ($page - 1) * PROFILES_PER_MINILIST;
                         $limit = (($page - 1) == 0 ? 1 : $page) * PROFILES_PER_MINILIST;
-                        $sub = $profile->getSubscribed($since, $limit);
+                        $sub   = $profile->getSubscribed ($since, $limit);
                 } catch (NoResultException $e) {
                         ActivityPubReturn::error ('This user is not following anyone.');
                 }

@@ -31,7 +31,11 @@ if (!defined ('GNUSOCIAL')) {
 
 try {
         Activitypub_notice::getByUri ($data->object)->deleteAs ($actor_profile);
-        ActivityPubReturn::answer ("Notice deleted successfully.");
-} catch(Exception $ex) {
-        ActivityPubReturn::error ($ex->getMessage (), 403);
+        $res = array ("@context" => "https://www.w3.org/ns/activitystreams",
+                  "type"   => "Delete",
+                  "actor"  => $data->actor,
+                  "object" => $data->object);
+        ActivityPubReturn::answer ($res);
+} catch (Exception $e) {
+        ActivityPubReturn::error ($e->getMessage (), 403);
 }

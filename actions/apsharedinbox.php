@@ -1,10 +1,5 @@
 <?php
-
-require_once dirname (__DIR__) . DIRECTORY_SEPARATOR . "utils" . DIRECTORY_SEPARATOR . "discovery.php";
-use Activitypub_Discovery;
-use ActivityPubReturn;
-use Activitypub_notice;
-
+require_once dirname (__DIR__) . DIRECTORY_SEPARATOR . "utils" . DIRECTORY_SEPARATOR . "explorer.php";
 /**
  * GNU social - a federating social network
  *
@@ -67,14 +62,11 @@ class apSharedInboxAction extends ManagedAction
                 if (!isset($data->actor)) {
                         ActivityPubReturn::error ("Actor was not specified.");
                 }
-                if (!isset($data->to)) {
-                        ActivityPubReturn::error ("To was not specified.");
-                }
                 if (!isset($data->object)) {
                         ActivityPubReturn::error ("Object was not specified.");
                 }
 
-                $discovery = new Activitypub_Discovery;
+                $discovery = new Activitypub_explorer;
 
                 // Get valid Actor object
                 try {
@@ -84,37 +76,42 @@ class apSharedInboxAction extends ManagedAction
                         ActivityPubReturn::error ("Invalid Actor.", 404);
                 }
 
+                unset ($discovery);
+
                 // Public To:
                 $public_to = array ("https://www.w3.org/ns/activitystreams#Public",
                                     "Public",
                                     "as:Public");
 
-                $to_profiles = array ();
-                // Generate To objects
-                if (is_array ($data->to)) {
-                        // Remove duplicates from To actors set
-                        array_unique ($data->to);
-                        foreach ($data->to as $to_url) {
-                                try {
-                                        $to_profiles = array_merge ($to_profiles, $discovery->lookup ($to_url));
-                                } catch (Exception $e) {
-                                        // XXX: Invalid actor found, not sure how we handle those
-                                }
-                        }
-                } else if (empty ($data->to) || in_array ($data->to, $public_to)) {
-                        // No need to do anything else at this point, let's just break out the if
-                } else {
-                        try {
-                                $to_profiles[]= $discovery->lookup ($data->to);
-                        } catch (Exception $e) {
-                                ActivityPubReturn::error ("Invalid Actor.", 404);
-                        }
-                }
-                unset ($discovery);
-
                 // Process request
                 switch ($data->type) {
                         case "Create":
+                                if (!isset($data->to)) {
+                                        ActivityPubReturn::error ("To was not specified.");
+                                }
+                                $discovery = new Activitypub_Discovery;
+                                $to_profiles = array ();
+                                // Generate To objects
+                                if (is_array ($data->to)) {
+                                        // Remove duplicates from To actors set
+                                        array_unique ($data->to);
+                                        foreach ($data->to as $to_url) {
+                                                try {
+                                                        $to_profiles = array_merge ($to_profiles, $discovery->lookup ($to_url));
+                                                } catch (Exception $e) {
+                                                        // XXX: Invalid actor found, not sure how we handle those
+                                                }
+                                        }
+                                } else if (empty ($data->to) || in_array ($data->to, $public_to)) {
+                                        // No need to do anything else at this point, let's just break out the if
+                                } else {
+                                        try {
+                                                $to_profiles[]= $discovery->lookup ($data->to);
+                                        } catch (Exception $e) {
+                                                ActivityPubReturn::error ("Invalid Actor.", 404);
+                                        }
+                                }
+                                unset ($discovery);
                                 require_once __DIR__ . DIRECTORY_SEPARATOR . "inbox" . DIRECTORY_SEPARATOR . "Create.php";
                                 break;
                         case "Follow":
@@ -125,6 +122,9 @@ class apSharedInboxAction extends ManagedAction
                                 break;
                         case "Announce":
                                 require_once __DIR__ . DIRECTORY_SEPARATOR . "inbox" . DIRECTORY_SEPARATOR . "Announce.php";
+                                break;
+                        case "Undo":
+                                require_once __DIR__ . DIRECTORY_SEPARATOR . "inbox" . DIRECTORY_SEPARATOR . "Undo.php";
                                 break;
                         default:
                                 ActivityPubReturn::error ("Invalid type value.");
