@@ -66,13 +66,13 @@ class apActorInboxAction extends ManagedAction
                 $data = json_decode (file_get_contents ('php://input'));
 
                 // Validate data
-                if (!(isset($data->type))) {
+                if (!(isset ($data->type))) {
                         ActivityPubReturn::error ("Type was not specified.");
                 }
-                if (!isset($data->actor)) {
+                if (!isset ($data->actor)) {
                         ActivityPubReturn::error ("Actor was not specified.");
                 }
-                if (!isset($data->object)) {
+                if (!isset ($data->object)) {
                         ActivityPubReturn::error ("Object was not specified.");
                 }
 

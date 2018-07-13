@@ -72,9 +72,9 @@ class apActorLikedCollectionAction extends ManagedAction
                         $limit = 80;
                 }
 
-                $fave = $this->fetch_faves($user->getID(), $limit, $since_id, $max_id);
+                $fave = $this->fetch_faves ($user->getID(), $limit, $since_id, $max_id);
 
-                $faves = array();
+                $faves = array ();
                 while ($fave->fetch ()) {
                         $faves[] = $this->pretty_fave (clone ($fave));
                 }

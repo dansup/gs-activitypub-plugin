@@ -51,10 +51,12 @@ class Activitypub_postman
         /**
          * Create a postman to deliver something to someone
          *
+         * @param Profile of sender
          * @param Activitypub_profile $to array of destinataries
          */
-        public function __construct ($from, $to)
+        public function __construct ($from, $to = array ())
         {
+                $this->client = new HTTPClient ();
                 $this->actor = $from;
                 $this->to = $to;
                 $this->headers = array();
@@ -67,13 +69,12 @@ class Activitypub_postman
          */
         public function follow ()
         {
-                $this->client = new HTTPClient ();
                 $data = array ("@context" => "https://www.w3.org/ns/activitystreams",
                           "type"   => "Follow",
                           "actor"  => $this->actor->getUrl (),
                           "object" => $this->to[0]->getUrl ());
                 $this->client->setBody (json_encode ($data));
-                $response = $this->client->post ($this->to[0]->getInbox (), $this->headers);
+                $this->client->post ($this->to[0]->get_inbox (), $this->headers);
         }
 
         /**
@@ -81,7 +82,6 @@ class Activitypub_postman
          */
         public function undo_follow ()
         {
-                $this->client = new HTTPClient ();
                 $data = array ("@context" => "https://www.w3.org/ns/activitystreams",
                             "type"   => "Undo",
                             "actor"  => $this->actor->getUrl (),
@@ -91,6 +91,54 @@ class Activitypub_postman
                             )
                         );
                 $this->client->setBody (json_encode ($data));
-                $response = $this->client->post ($this->to[0]->getInbox (), $this->headers);
+                $this->client->post ($this->to[0]->get_inbox (), $this->headers);
+        }
+
+        /**
+         * Send a Like notification to remote instances holding the notice
+         * 
+         * @param Notice $notice
+         */
+        public function like ($notice)
+        {
+                $data = array ("@context" => "https://www.w3.org/ns/activitystreams",
+                          "type"   => "Like",
+                          "actor"  => $this->actor->getUrl (),
+                          "object" => $notice->getUrl ());
+                $this->client->setBody (json_encode ($data));
+                foreach ($this->to_inbox () as $inbox) {
+                        $this->client->post ($inbox, $this->headers);
+                }
+        }
+
+        /**
+         * Send a Undo Like notification to remote instances holding the notice
+         * 
+         * @param Notice $notice
+         */
+        public function undo_like ($notice)
+        {
+                $data = array ("@context" => "https://www.w3.org/ns/activitystreams",
+                            "type"   => "Undo",
+                            "actor"  => $this->actor->getUrl (),
+                            "object" => array (
+                                "type"   => "Like",
+                                "object" => $notice->getUrl ()
+                            )
+                    );
+                $this->client->setBody (json_encode ($data));
+                foreach ($this->to_inbox () as $inbox) {
+                        $this->client->post ($inbox, $this->headers);
+                }
+        }
+
+        private function to_inbox ()
+        {
+                $to_inboxes = array ();
+                foreach ($this->to as $to_profile) {
+                        $to_inboxes[] = $to_profile->get_inbox ();
+                }
+                
+                return array_unique ($to_inboxes);
         }
 }

@@ -122,7 +122,7 @@ class ActivityPubPlugin extends Plugin
                 }
 
                 try {
-                        $other = Activitypub_profile::fromProfile ($other);
+                        $other = Activitypub_profile::from_profile ($other);
                 } catch (Exception $e) {
                         return true;
                 }
@@ -148,7 +148,7 @@ class ActivityPubPlugin extends Plugin
                 }
 
                 try {
-                        $other = Activitypub_profile::fromProfile ($other);
+                        $other = Activitypub_profile::from_profile ($other);
                 } catch (Exception $e) {
                         return true;
                 }
@@ -156,6 +156,66 @@ class ActivityPubPlugin extends Plugin
                 $postman = new Activitypub_postman ($profile, array ($other));
 
                 $postman->undo_follow ();
+
+                return true;
+        }
+
+        /**
+         * Notify remote users when their notices get favorited.
+         *
+         * @param Profile $profile of local user doing the faving
+         * @param Notice $notice Notice being favored
+         * @return hook return value
+         */
+        function onEndFavorNotice (Profile $profile, Notice $notice)
+        {
+                // Only distribute local users' favor actions, remote users
+                // will have already distributed theirs.
+                if (!$profile->isLocal ()) {
+                        return true;
+                }
+
+                $other = array ();
+                foreach ($notice->getAttentionProfileIDs () as $to_id) {
+                        try {
+                                $other[] = Activitypub_profile::from_profile (Profile::getById ($to_id));
+                        } catch (Exception $e) {
+                                // Local user can be ignored
+                        }
+                }
+                $postman = new Activitypub_postman ($profile, $other);
+
+                $postman->like ($notice);
+
+                return true;
+        }
+
+        /**
+         * Notify remote users when their notices get de-favorited.
+         *
+         * @param Profile $profile of local user doing the de-faving
+         * @param Notice  $notice  Notice being favored
+         * @return hook return value
+         */
+        function onEndDisfavorNotice (Profile $profile, Notice $notice)
+        {
+                // Only distribute local users' favor actions, remote users
+                // will have already distributed theirs.
+                if (!$profile->isLocal ()) {
+                        return true;
+                }
+
+                $other = array ();
+                foreach ($notice->getAttentionProfileIDs () as $to_id) {
+                        try {
+                                $other[] = Activitypub_profile::from_profile (Profile::getById ($to_id));
+                        } catch (Exception $e) {
+                                // Local user can be ignored
+                        }
+                }
+                $postman = new Activitypub_postman ($profile, $other);
+
+                $postman->undo_like ($notice);
 
                 return true;
         }

@@ -120,7 +120,7 @@ class Activitypub_profile extends Profile
          * @access public
          * @throws ServerException
          */
-        public function doInsert ()
+        public function do_insert ()
         {
                 $profile = new Profile ();
 
@@ -156,7 +156,7 @@ class Activitypub_profile extends Profile
          * @return Profile
          * @throws NoProfileException if it was not found
          */
-        public function localProfile ()
+        public function local_profile ()
         {
                 $profile = Profile::getKV ('id', $this->profile_id);
                 if (!$profile instanceof Profile) {
@@ -172,13 +172,13 @@ class Activitypub_profile extends Profile
          * @return Activitypub_profile
          * @throws Exception if no Activitypub_profile exists for given Profile
          */
-        static function fromProfile (Profile $profile)
+        static function from_profile (Profile $profile)
         {
                 $profile_id = $profile->getID ();
 
                 $aprofile = Activitypub_profile::getKV ('profile_id', $profile_id);
                 if (!$aprofile instanceof Activitypub_profile) {
-                        throw new Exception('No Activitypub_profile for Profile ID: '.$profile_id);
+                        throw new Exception ('No Activitypub_profile for Profile ID: '.$profile_id);
                 }
 
                 foreach ($profile as $key => $value) {
@@ -193,7 +193,7 @@ class Activitypub_profile extends Profile
          *
          * @return string Inbox URL
          */
-        public function getInbox ()
+        public function get_inbox ()
         {
                 if (is_null ($this->sharedInboxuri)) {
                         return $this->inboxuri;

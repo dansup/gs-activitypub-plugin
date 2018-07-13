@@ -165,9 +165,9 @@ class Activitypub_explorer
                 $aprofile->inboxuri       = $res["inbox"];
                 $aprofile->sharedInboxuri = $res["sharedInbox"];
 
-                $aprofile->doInsert ();
+                $aprofile->do_insert ();
 
-                return $aprofile->localProfile ();
+                return $aprofile->local_profile ();
         }
 
         /**
