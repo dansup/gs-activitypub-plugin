@@ -52,7 +52,7 @@ class ActivityPubPlugin extends Plugin
                                             ['action' => 'showstream'],
                                             ['nickname' => Nickname::DISPLAY_FMT],
                                             'apActorProfile');
-                
+
                 $m->connect (':nickname/liked.json',
                             ['action'    => 'apActorLikedCollection'],
                             ['nickname'  => Nickname::DISPLAY_FMT]);
@@ -66,11 +66,14 @@ class ActivityPubPlugin extends Plugin
                             ['nickname'  => Nickname::DISPLAY_FMT]);
 
                 $m->connect (':nickname/inbox.json',
-                            ['action' => 'apActorInbox'],
-                            ['nickname' => Nickname::DISPLAY_FMT]);
+                            ['action'    => 'apActorInbox'],
+                            ['nickname'  => Nickname::DISPLAY_FMT]);
 
                 $m->connect ('inbox.json',
-                            array('action' => 'apSharedInbox'));
+                            array ('action' => 'apSharedInbox'));
+
+                $m->connect ('api/statuses/public_timeline.as2',
+                            array ('action' => 'apFeed'));
         }
 
         /**
@@ -101,7 +104,7 @@ class ActivityPubPlugin extends Plugin
             $schema->ensureTable ('Activitypub_profile', Activitypub_profile::schemaDef());
             return true;
         }
-        
+
             /********************************************************
              *                    Delivery Events                   *
              ********************************************************/
@@ -158,6 +161,24 @@ class ActivityPubPlugin extends Plugin
                 $postman->undo_follow ();
 
                 return true;
+        }
+
+        function onEndShowExportData (Action $action)
+        {
+                $action->elementStart ('div', array ('id' => 'export_data',
+                                                      'class' => 'section'));
+                $action->elementStart ('ul', array ('class' => 'xoxo'));
+
+                $action->elementStart ('li');
+                $action->element ('a', array ('href' => common_root_url ()."api/statuses/public_timeline.as2",
+                                               'class' => "json",
+                                               'type' => "application/activity+json",
+                                               'title' => "Public Timeline Feed (Activity Streams 2 JSON)"),
+                                    "Activity Streams 2");
+                $action->elementEnd ('li');
+
+                $action->elementEnd ('ul');
+                $action->elementEnd ('div');
         }
 }
 
