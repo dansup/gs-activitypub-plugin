@@ -30,6 +30,8 @@ if (!defined ('GNUSOCIAL')) {
 }
 
 /**
+ * ActivityPub notice representation
+ *
  * @category  Plugin
  * @package   GNUsocial
  * @author    Daniel Supernault <danielsupernault@gmail.com>

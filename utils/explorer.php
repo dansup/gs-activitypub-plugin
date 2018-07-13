@@ -30,6 +30,10 @@ if (!defined ('GNUSOCIAL')) {
 }
 
 /**
+ * ActivityPub's own Explorer
+ *
+ * Allows to discovery new (or the same) ActivityPub profiles
+ *
  * @category  Plugin
  * @package   GNUsocial
  * @author    Diogo Cordeiro <diogo@fc.up.pt>

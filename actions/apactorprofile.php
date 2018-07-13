@@ -30,6 +30,8 @@ if (!defined ('GNUSOCIAL')) {
 }
 
 /**
+ * Actor's profile (Local users only)
+ *
  * @category  Plugin
  * @package   GNUsocial
  * @author    Daniel Supernault <danielsupernault@gmail.com>

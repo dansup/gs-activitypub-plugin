@@ -30,6 +30,11 @@ if (!defined ('GNUSOCIAL')) {
 }
 
 /**
+ * ActivityPub's own Postman
+ *
+ * Standard workflow expects that we send an Explorer to find out destinataries'
+ * inbox address. Then we send our postman to deliver whatever we want to send them.
+ *
  * @category  Plugin
  * @package   GNUsocial
  * @author    Diogo Cordeiro <diogo@fc.up.pt>

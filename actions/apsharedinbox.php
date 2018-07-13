@@ -31,6 +31,8 @@ if (!defined ('GNUSOCIAL')) {
 }
 
 /**
+ * Shared Inbox Handler
+ *
  * @category  Plugin
  * @package   GNUsocial
  * @author    Diogo Cordeiro <diogo@fc.up.pt>

@@ -30,6 +30,8 @@ if (!defined ('GNUSOCIAL')) {
 }
 
 /**
+ * Actor's Inbox
+ *
  * @category  Plugin
  * @package   GNUsocial
  * @author    Diogo Cordeiro <diogo@fc.up.pt>

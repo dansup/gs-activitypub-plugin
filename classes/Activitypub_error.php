@@ -30,6 +30,8 @@ if (!defined ('GNUSOCIAL')) {
 }
 
 /**
+ * ActivityPub error representation
+ *
  * @category  Plugin
  * @package   GNUsocial
  * @author    Diogo Cordeiro <diogo@fc.up.pt>
