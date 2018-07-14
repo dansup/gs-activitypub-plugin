@@ -219,6 +219,36 @@ class ActivityPubPlugin extends Plugin
 
                 return true;
         }
+
+        /**
+         * Notify remote users when their notices get deleted
+         *
+         * @return boolean hook flag
+         */
+        public function onEndDeleteOwnNotice ($user, $notice)
+        {
+                $profile = $user->getProfile ();
+
+                // Only distribute local users' delete actions, remote users
+                // will have already distributed theirs.
+                if (!$profile->isLocal ()) {
+                        return true;
+                }
+
+                $other = array ();
+                foreach ($notice->getAttentionProfileIDs () as $to_id) {
+                        try {
+                                $other[] = Activitypub_profile::from_profile (Profile::getById ($to_id));
+                        } catch (Exception $e) {
+                                // Local user can be ignored
+                        }
+                }
+                $postman = new Activitypub_postman ($profile, $other);
+
+                $postman->delete ($notice);
+
+                return true;
+        }
 }
 
 /**

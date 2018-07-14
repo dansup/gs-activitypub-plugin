@@ -96,7 +96,7 @@ class Activitypub_postman
 
         /**
          * Send a Like notification to remote instances holding the notice
-         * 
+         *
          * @param Notice $notice
          */
         public function like ($notice)
@@ -113,7 +113,7 @@ class Activitypub_postman
 
         /**
          * Send a Undo Like notification to remote instances holding the notice
-         * 
+         *
          * @param Notice $notice
          */
         public function undo_like ($notice)
@@ -125,20 +125,43 @@ class Activitypub_postman
                                 "type"   => "Like",
                                 "object" => $notice->getUrl ()
                             )
-                    );
+                        );
                 $this->client->setBody (json_encode ($data));
                 foreach ($this->to_inbox () as $inbox) {
                         $this->client->post ($inbox, $this->headers);
                 }
         }
 
+        /**
+         * Send a Delete notification to remote instances holding the notice
+         *
+         * @param Notice $notice
+         */
+        public function delete ($notice)
+        {
+                $data = array ("@context" => "https://www.w3.org/ns/activitystreams",
+                            "type"   => "Delete",
+                            "actor"  => $this->actor->getUrl (),
+                            "object" => $notice->getUrl ()
+                        );
+                $this->client->setBody (json_encode ($data));
+                foreach ($this->to_inbox () as $inbox) {
+                        $this->client->post ($inbox, $this->headers);
+                }
+        }
+
+        /**
+         * Clean list of inboxes to deliver messages
+         *
+         * @return array To Inbox URLs
+         */
         private function to_inbox ()
         {
                 $to_inboxes = array ();
                 foreach ($this->to as $to_profile) {
                         $to_inboxes[] = $to_profile->get_inbox ();
                 }
-                
+
                 return array_unique ($to_inboxes);
         }
 }

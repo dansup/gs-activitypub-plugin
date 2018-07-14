@@ -30,7 +30,7 @@ if (!defined ('GNUSOCIAL')) {
 }
 
 try {
-        Activitypub_notice::getByUri ($data->object)->deleteAs ($actor_profile);
+        Activitypub_notice::getKV ("url", $data->object)->deleteAs ($actor_profile);
         $res = array ("@context" => "https://www.w3.org/ns/activitystreams",
                   "type"   => "Delete",
                   "actor"  => $data->actor,
