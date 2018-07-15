@@ -38,6 +38,9 @@ if (!(isset ($data->object->type) && in_array ($data->object->type, $valid_objec
 if (!isset ($data->object->content)) {
         ActivityPubReturn::error ("Object content was not specified.");
 }
+if (!isset ($data->object->url)) {
+        ActivityPubReturn::error ("Object url was not specified.");
+}
 
 $content = $data->object->content;
 
@@ -50,9 +53,13 @@ $act->context = new ActivityContext ();
 
 // Is this a reply?
 if (isset ($data->object->reply_to)) {
-        $reply_to = Notice::getByUri ($data->object->reply_to);
-        $act->context->replyToID = $reply_to->getUri ();
-        $act->context->replyToUrl = $data->object->reply_to;
+        try {
+                $reply_to = Notice::getByUri ($data->object->reply_to);
+        } catch (Exception $e) {
+                ActivityPubReturn::error ("Invalid Object reply_to value.");
+        }
+        $act->context->replyToID  = $reply_to->getUri ();
+        $act->context->replyToUrl = $reply_to->getUrl ();
 } else {
         $reply_to = null;
 }
@@ -70,7 +77,7 @@ if (Notice::contentTooLong ($content)) {
         ActivityPubReturn::error ("That's too long. Maximum notice size is %d character.");
 }
 
-$options = array ('source' => 'ActivityPub', 'uri' => $data->id);
+$options = array ('source' => 'ActivityPub', 'uri' => $data->id, 'url' => $data->object->url);
 // $options gets filled with possible scoping settings
 ToSelector::fillActivity ($this, $act, $options);
 
@@ -84,6 +91,7 @@ $act->objects[] = $actobj;
 try {
         $res = array ("@context" => "https://www.w3.org/ns/activitystreams",
                   "id"     => $data->id,
+                  "url"    => $data->object->url,
                   "type"   => "Create",
                   "actor"  => $data->actor,
                   "object" => Activitypub_notice::notice_to_array (Notice::saveActivity ($act, $actor_profile, $options)));

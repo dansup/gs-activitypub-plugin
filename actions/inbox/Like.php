@@ -30,7 +30,7 @@ if (!defined ('GNUSOCIAL')) {
 }
 
 try {
-        Fave::addNew ($actor_profile, Notice::getKV ("url", $data->object));
+        Fave::addNew ($actor_profile, Notice::getByUri ($data->object));
         $res = array ("@context" => "https://www.w3.org/ns/activitystreams",
                   "type"   => "Like",
                   "actor"  => $data->actor,

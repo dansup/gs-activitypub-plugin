@@ -41,8 +41,7 @@ case "Like":
                 if (!isset ($data->object->object)) {
                         ActivityPubReturn::error ("Object Notice URL was not specified.");
                 }
-
-                Fave::removeEntry ($actor_profile, Notice::getKV ("url", $data->object->object));
+                Fave::removeEntry ($actor_profile, Notice::getByUri ($data->object->object));
                 ActivityPubReturn::answer ("Notice disfavorited successfully.");
         } catch (Exception $e) {
                 ActivityPubReturn::error ($e->getMessage (), 403);

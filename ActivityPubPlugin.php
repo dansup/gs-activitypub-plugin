@@ -52,7 +52,7 @@ class ActivityPubPlugin extends Plugin
                                             ['action' => 'showstream'],
                                             ['nickname' => Nickname::DISPLAY_FMT],
                                             'apActorProfile');
-                
+
                 $m->connect (':nickname/liked.json',
                             ['action'    => 'apActorLikedCollection'],
                             ['nickname'  => Nickname::DISPLAY_FMT]);
@@ -101,7 +101,7 @@ class ActivityPubPlugin extends Plugin
             $schema->ensureTable ('Activitypub_profile', Activitypub_profile::schemaDef());
             return true;
         }
-        
+
             /********************************************************
              *                    Delivery Events                   *
              ********************************************************/
@@ -176,13 +176,41 @@ class ActivityPubPlugin extends Plugin
                 }
 
                 $other = array ();
-                foreach ($notice->getAttentionProfileIDs () as $to_id) {
+                try {
+                        $other[] = Activitypub_profile::from_profile($notice->getProfile ());
+                } catch (Exception $e) {
+                        // Local user can be ignored
+                }
+                foreach ($notice->getAttentionProfiles() as $to_profile) {
                         try {
-                                $other[] = Activitypub_profile::from_profile (Profile::getById ($to_id));
+                                $other[] = Activitypub_profile::from_profile ($to_profile);
                         } catch (Exception $e) {
                                 // Local user can be ignored
                         }
                 }
+                if ($notice->reply_to) {
+                        try {
+                                $other[] = Activitypub_profile::from_profile ($notice->getParent ()->getProfile ());
+                        } catch (Exception $e) {
+                                // Local user can be ignored
+                        }
+                        try {
+                                $mentions = $notice->getParent ()->getAttentionProfiles ();
+                                foreach ($mentions as $to_profile) {
+                                        try {
+                                                $other[] = Activitypub_profile::from_profile ($to_profile);
+                                        } catch (Exception $e) {
+                                                // Local user can be ignored
+                                        }
+                                }
+                        } catch (NoParentNoticeException $e) {
+                                // This is not a reply to something (has no parent)
+                        } catch (NoResultException $e) {
+                                // Parent author's profile not found! Complain louder?
+                                common_log(LOG_ERR, "Parent notice's author not found: ".$e->getMessage());
+                        }
+                }
+
                 $postman = new Activitypub_postman ($profile, $other);
 
                 $postman->like ($notice);
@@ -206,13 +234,41 @@ class ActivityPubPlugin extends Plugin
                 }
 
                 $other = array ();
-                foreach ($notice->getAttentionProfileIDs () as $to_id) {
+                try {
+                        $other[] = Activitypub_profile::from_profile($notice->getProfile ());
+                } catch (Exception $e) {
+                        // Local user can be ignored
+                }
+                foreach ($notice->getAttentionProfiles() as $to_profile) {
                         try {
-                                $other[] = Activitypub_profile::from_profile (Profile::getById ($to_id));
+                                $other[] = Activitypub_profile::from_profile ($to_profile);
                         } catch (Exception $e) {
                                 // Local user can be ignored
                         }
                 }
+                if ($notice->reply_to) {
+                        try {
+                                $other[] = Activitypub_profile::from_profile ($notice->getParent ()->getProfile ());
+                        } catch (Exception $e) {
+                                // Local user can be ignored
+                        }
+                        try {
+                                $mentions = $notice->getParent ()->getAttentionProfiles ();
+                                foreach ($mentions as $to_profile) {
+                                        try {
+                                                $other[] = Activitypub_profile::from_profile ($to_profile);
+                                        } catch (Exception $e) {
+                                                // Local user can be ignored
+                                        }
+                                }
+                        } catch (NoParentNoticeException $e) {
+                                // This is not a reply to something (has no parent)
+                        } catch (NoResultException $e) {
+                                // Parent author's profile not found! Complain louder?
+                                common_log(LOG_ERR, "Parent notice's author not found: ".$e->getMessage());
+                        }
+                }
+
                 $postman = new Activitypub_postman ($profile, $other);
 
                 $postman->undo_like ($notice);
@@ -236,17 +292,123 @@ class ActivityPubPlugin extends Plugin
                 }
 
                 $other = array ();
-                foreach ($notice->getAttentionProfileIDs () as $to_id) {
+
+                foreach ($notice->getAttentionProfiles() as $to_profile) {
                         try {
-                                $other[] = Activitypub_profile::from_profile (Profile::getById ($to_id));
+                                $other[] = Activitypub_profile::from_profile ($to_profile);
                         } catch (Exception $e) {
                                 // Local user can be ignored
                         }
                 }
+                if ($notice->reply_to) {
+                        try {
+                                $other[] = Activitypub_profile::from_profile ($notice->getParent ()->getProfile ());
+                        } catch (Exception $e) {
+                                // Local user can be ignored
+                        }
+                        try {
+                                $mentions = $notice->getParent ()->getAttentionProfiles ();
+                                foreach ($mentions as $to_profile) {
+                                        try {
+                                                $other[] = Activitypub_profile::from_profile ($to_profile);
+                                        } catch (Exception $e) {
+                                                // Local user can be ignored
+                                        }
+                                }
+                        } catch (NoParentNoticeException $e) {
+                                // This is not a reply to something (has no parent)
+                        } catch (NoResultException $e) {
+                                // Parent author's profile not found! Complain louder?
+                                common_log(LOG_ERR, "Parent notice's author not found: ".$e->getMessage());
+                        }
+                }
+
+                $postman = new Activitypub_postman ($profile, $other);
+                $postman->delete ($notice);
+                return true;
+        }
+
+        /**
+         * Insert notifications for replies, mentions and repeats
+         *
+         * @return boolean hook flag
+         */
+        function onStartNoticeDistribute ($notice)
+        {
+                assert ($notice->id > 0);        // Ignore if not a valid notice
+
+                $profile = Profile::getKV ($notice->profile_id);
+
+                $other = array ();
+                try {
+                        $other[] = Activitypub_profile::from_profile($notice->getProfile ());
+                } catch (Exception $e) {
+                        // Local user can be ignored
+                }
+                foreach ($notice->getAttentionProfiles() as $to_profile) {
+                        try {
+                                $other[] = Activitypub_profile::from_profile ($to_profile);
+                        } catch (Exception $e) {
+                                // Local user can be ignored
+                        }
+                }
+
+                // Is Announce
+                if ($notice->isRepeat ()) {
+                        $repeated_notice = Notice::getKV ('id', $notice->repeat_of);
+                        if ($repeated_notice instanceof Notice) {
+                                try {
+                                        $other[] = Activitypub_profile::from_profile ($repeated_notice->getProfile ());
+                                } catch (Exception $e) {
+                                        // Local user can be ignored
+                                }
+
+                                $postman = new Activitypub_postman ($profile, $other);
+
+                                // That was it
+                                $postman->announce ($repeated_notice);
+                                return true;
+                        }
+                }
+
+                // Ignore for activity/non-post-verb notices
+                if (method_exists ('ActivityUtils', 'compareVerbs')) {
+                        $is_post_verb = ActivityUtils::compareVerbs ($notice->verb,
+                                                                     array (ActivityVerb::POST));
+                } else {
+                        $is_post_verb = ($notice->verb == ActivityVerb::POST ? true : false);
+                }
+                if ($notice->source == 'activity' || !$is_post_verb) {
+                        return true;
+                }
+
+                // Create
+                if ($notice->reply_to) {
+                        try {
+                                $other[] = Activitypub_profile::from_profile ($notice->getParent ()->getProfile ());
+                        } catch (Exception $e) {
+                                // Local user can be ignored
+                        }
+                        try {
+                                $mentions = $notice->getParent ()->getAttentionProfiles ();
+                                foreach ($mentions as $to_profile) {
+                                        try {
+                                                $other[] = Activitypub_profile::from_profile ($to_profile);
+                                        } catch (Exception $e) {
+                                                // Local user can be ignored
+                                        }
+                                }
+                        } catch (NoParentNoticeException $e) {
+                                // This is not a reply to something (has no parent)
+                        } catch (NoResultException $e) {
+                                // Parent author's profile not found! Complain louder?
+                                common_log(LOG_ERR, "Parent notice's author not found: ".$e->getMessage());
+                        }
+                }
                 $postman = new Activitypub_postman ($profile, $other);
 
-                $postman->delete ($notice);
-
+                // That was it
+                $postman->create ($notice);
                 return true;
         }
 }

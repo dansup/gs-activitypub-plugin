@@ -141,7 +141,7 @@ class Activitypub_explorer
                                 $this->_lookup ($res["next"]);
                         }
                         return true;
-                } else if ($this->validate_remote_response ($res)) {
+                } else if (self::validate_remote_response ($res)) {
                         $this->discovered_actor_profiles[]= $this->store_profile ($res);
                         return true;
                 }
@@ -163,7 +163,7 @@ class Activitypub_explorer
                 $aprofile->fullname       = $res["display_name"];
                 $aprofile->bio            = substr ($res["summary"], 0, 1000);
                 $aprofile->inboxuri       = $res["inbox"];
-                $aprofile->sharedInboxuri = $res["sharedInbox"];
+                $aprofile->sharedInboxuri = isset ($res["sharedInbox"]) ? $res["sharedInbox"] : $res["inbox"];
 
                 $aprofile->do_insert ();
 
@@ -177,9 +177,9 @@ class Activitypub_explorer
          * @param array $res remote response
          * @return boolean success state
          */
-        private function validate_remote_response ($res)
+        private static function validate_remote_response ($res)
         {
-                if (!isset ($res["url"], $res["nickname"], $res["display_name"], $res["summary"], $res["inbox"], $res["sharedInbox"])) {
+                if (!isset ($res["url"], $res["nickname"], $res["display_name"], $res["summary"], $res["inbox"])) {
                         return false;
                 }
 
@@ -209,5 +209,30 @@ class Activitypub_explorer
                         }
                 }
                 return $i;
+        }
+
+        /**
+         * Given a valid actor profile url returns its inboxes
+         *
+         * @param string $url of Actor profile
+         * @return boolean|array false if fails | array with inbox and shared inbox if successful
+         */
+        static function get_actor_inboxes_uri ($url)
+        {
+                $client    = new HTTPClient ();
+                $headers   = array();
+                $headers[] = 'Accept: application/ld+json; profile="https://www.w3.org/ns/activitystreams"';
+                $headers[] = 'User-Agent: GNUSocialBot v0.1 - https://gnu.io/social';
+                $response  = $client->get ($url, $headers);
+                if (!$response->isOk ()) {
+                    throw new Exception ("Invalid Actor URL.");
+                }
+                $res = json_decode ($response->getBody (), JSON_UNESCAPED_SLASHES);
+                if (self::validate_remote_response ($res)) {
+                        return array ("inbox"       => $res["inbox"],
+                                      "sharedInbox" => isset ($res["sharedInbox"]) ? $res["sharedInbox"] : $res["inbox"]);
+                }
+
+                return false;
         }
 }

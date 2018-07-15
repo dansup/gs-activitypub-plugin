@@ -104,7 +104,7 @@ class Activitypub_postman
                 $data = array ("@context" => "https://www.w3.org/ns/activitystreams",
                           "type"   => "Like",
                           "actor"  => $this->actor->getUrl (),
-                          "object" => $notice->getUrl ());
+                          "object" => $notice->getUri ());
                 $this->client->setBody (json_encode ($data));
                 foreach ($this->to_inbox () as $inbox) {
                         $this->client->post ($inbox, $this->headers);
@@ -123,9 +123,57 @@ class Activitypub_postman
                             "actor"  => $this->actor->getUrl (),
                             "object" => array (
                                 "type"   => "Like",
-                                "object" => $notice->getUrl ()
+                                "object" => $notice->getUri ()
                             )
                         );
+                $this->client->setBody (json_encode ($data));
+                foreach ($this->to_inbox () as $inbox) {
+                        $this->client->post ($inbox, $this->headers);
+                }
+        }
+
+        /**
+         * Send a Announce notification to remote instances
+         *
+         * @param Notice $notice
+         */
+        public function announce ($notice)
+        {
+                $data = array ("@context" => "https://www.w3.org/ns/activitystreams",
+                               "id"       => $notice->getUri (),
+                               "url"      => $notice->getUrl (),
+                               "type"     => "Announce",
+                               "actor"    => $this->actor->getUrl (),
+                               "to"       => "https://www.w3.org/ns/activitystreams#Public",
+                               "object"   => $notice->getUri ()
+                              );
+                $this->client->setBody (json_encode ($data));
+                foreach ($this->to_inbox () as $inbox) {
+                        $this->client->post ($inbox, $this->headers);
+                }
+        }
+
+        /**
+         * Send a Create notification to remote instances
+         *
+         * @param Notice $notice
+         */
+        public function create ($notice)
+        {
+                $data = array ("@context" => "https://www.w3.org/ns/activitystreams",
+                               "id"       => $notice->getUri (),
+                               "type"     => "Create",
+                               "actor"    => $this->actor->getUrl (),
+                               "to"       => "https://www.w3.org/ns/activitystreams#Public",
+                               "object"   => array (
+                                 "type"    => "Note",
+                                 "url"      => $notice->getUrl (),
+                                 "content" => $notice->getContent ()
+                               )
+                              );
+                if (isset ($notice->reply_to)) {
+                        $data["object"]["reply_to"] = $notice->getParent ()->getUri ();
+                }
                 $this->client->setBody (json_encode ($data));
                 foreach ($this->to_inbox () as $inbox) {
                         $this->client->post ($inbox, $this->headers);
@@ -142,7 +190,7 @@ class Activitypub_postman
                 $data = array ("@context" => "https://www.w3.org/ns/activitystreams",
                             "type"   => "Delete",
                             "actor"  => $this->actor->getUrl (),
-                            "object" => $notice->getUrl ()
+                            "object" => $notice->getUri ()
                         );
                 $this->client->setBody (json_encode ($data));
                 foreach ($this->to_inbox () as $inbox) {

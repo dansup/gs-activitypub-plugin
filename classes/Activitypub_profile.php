@@ -1,4 +1,5 @@
 <?php
+require_once dirname (__DIR__) . DIRECTORY_SEPARATOR . "utils" . DIRECTORY_SEPARATOR . "explorer.php";
 /**
  * GNU social - a federating social network
  *
@@ -178,12 +179,47 @@ class Activitypub_profile extends Profile
 
                 $aprofile = Activitypub_profile::getKV ('profile_id', $profile_id);
                 if (!$aprofile instanceof Activitypub_profile) {
-                        throw new Exception ('No Activitypub_profile for Profile ID: '.$profile_id);
+                        // No Activitypub_profile for this profile_id,
+                        if (!$profile->isLocal ()) {
+                                // create one!
+                                $aprofile = self::create_from_local_profile ($profile);
+                        } else {
+                                throw new Exception ('No Activitypub_profile for Profile ID: '.$profile_id. ', this probably is a local profile.');
+                        }
                 }
 
                 foreach ($profile as $key => $value) {
                         $aprofile->$key = $value;
                 }
+
+                return $aprofile;
+        }
+
+        /**
+         * Given an existent local profile creates an ActivityPub profile.
+         * One must be careful not to give a user profile to this function
+         * as only remote users have ActivityPub_profiles on local instance
+         *
+         * @param Profile $profile
+         * @return Activitypub_profile
+         */
+        private static function create_from_local_profile (Profile $profile)
+        {
+                $url = $profile->getURL ();
+                $inboxes = Activitypub_explorer::get_actor_inboxes_uri ($url);
+
+                $aprofile->created = $aprofile->modified = common_sql_now ();
+
+                $aprofile                 = new Activitypub_profile;
+                $aprofile->profile_id     = $profile->getID ();
+                $aprofile->uri            = $url;
+                $aprofile->nickname       = $profile->getNickname ();
+                $aprofile->fullname       = $profile->getFullname ();
+                $aprofile->bio            = substr ($profile->getDescription (), 0, 1000);
+                $aprofile->inboxuri       = $inboxes["inbox"];
+                $aprofile->sharedInboxuri = $inboxes["sharedInbox"];
+
+                $aprofile->insert ();
 
                 return $aprofile;
         }
