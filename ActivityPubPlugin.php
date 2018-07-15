@@ -411,6 +411,63 @@ class ActivityPubPlugin extends Plugin
                 $postman->create ($notice);
                 return true;
         }
+
+        /**
+         * Override the "from ActivityPub" bit in notice lists to link to the
+         * original post and show the domain it came from.
+         *
+         * @param Notice in $notice
+         * @param string out &$name
+         * @param string out &$url
+         * @param string out &$title
+         * @return mixed hook return code
+         */
+        function onStartNoticeSourceLink ($notice, &$name, &$url, &$title)
+        {
+            // If we don't handle this, keep the event handler going
+            if (!in_array ($notice->source, array('ActivityPub', 'share'))) {
+                    return true;
+            }
+
+            try {
+                    $url = $notice->getUrl();
+                    // If getUrl() throws exception, $url is never set
+
+                    $bits = parse_url($url);
+                    $domain = $bits['host'];
+                    if (substr($domain, 0, 4) == 'www.') {
+                        $name = substr($domain, 4);
+                    } else {
+                        $name = $domain;
+                    }
+
+                    // TRANS: Title. %s is a domain name.
+                    $title = sprintf(_m('Sent from %s via ActivityPub'), $domain);
+
+                    // Abort event handler, we have a name and URL!
+                    return false;
+            } catch (InvalidUrlException $e) {
+                    // This just means we don't have the notice source data
+                    return true;
+            }
+        }
+
+        /**
+         * Profile URI for remote profiles.
+         *
+         * @param Profile $profile
+         * @param string $uri in/out
+         * @return mixed hook return code
+         */
+        function onStartGetProfileUri ($profile, &$uri)
+        {
+                $aprofile = Activitypub_profile::getKV ('profile_id', $profile->id);
+                if ($aprofile instanceof Activitypub_profile) {
+                        $uri = $aprofile->uri;
+                        return false;
+                }
+                return true;
+        }
 }
 
 /**
