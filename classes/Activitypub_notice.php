@@ -44,6 +44,8 @@ class Activitypub_notice extends Managed_DataObject
         /**
          * Generates a pretty notice from a Notice object
          *
+         * @author Daniel Supernault <danielsupernault@gmail.com>
+         * @author Diogo Cordeiro <diogo@fc.up.pt>
          * @param Notice $notice
          * @return pretty array to be used in a response
          */

@@ -43,6 +43,7 @@ class Activitypub_error extends Managed_DataObject
         /**
          * Generates a pretty error from a string
          *
+         * @author Diogo Cordeiro <diogo@fc.up.pt>
          * @param string $m
          * @return pretty array to be used in a response
          */

@@ -1,5 +1,4 @@
 <?php
-require_once dirname (__DIR__) . DIRECTORY_SEPARATOR . "utils" . DIRECTORY_SEPARATOR . "explorer.php";
 /**
  * GNU social - a federating social network
  *
@@ -49,6 +48,7 @@ class Activitypub_profile extends Profile
         /**
          * Return table definition for Schema setup and DB_DataObject usage.
          *
+         * @author Diogo Cordeiro <diogo@fc.up.pt>
          * @return array array of column definitions
          */
         static function schemaDef ()
@@ -76,6 +76,7 @@ class Activitypub_profile extends Profile
         /**
          * Generates a pretty profile from a Profile object
          *
+         * @author Diogo Cordeiro <diogo@fc.up.pt>
          * @param Profile $profile
          * @return pretty array to be used in a response
          */
@@ -118,6 +119,7 @@ class Activitypub_profile extends Profile
         /**
          * Insert the current objects variables into the database
          *
+         * @author Diogo Cordeiro <diogo@fc.up.pt>
          * @access public
          * @throws ServerException
          */
@@ -154,6 +156,8 @@ class Activitypub_profile extends Profile
 
         /**
          * Fetch the locally stored profile for this Activitypub_profile
+         *
+         * @author Diogo Cordeiro <diogo@fc.up.pt>
          * @return Profile
          * @throws NoProfileException if it was not found
          */
@@ -169,6 +173,7 @@ class Activitypub_profile extends Profile
         /**
          * Generates an Activitypub_profile from a Profile
          *
+         * @author Diogo Cordeiro <diogo@fc.up.pt>
          * @param Profile $profile
          * @return Activitypub_profile
          * @throws Exception if no Activitypub_profile exists for given Profile
@@ -177,14 +182,14 @@ class Activitypub_profile extends Profile
         {
                 $profile_id = $profile->getID ();
 
-                $aprofile = Activitypub_profile::getKV ('profile_id', $profile_id);
+                $aprofile = self::getKV ('profile_id', $profile_id);
                 if (!$aprofile instanceof Activitypub_profile) {
                         // No Activitypub_profile for this profile_id,
                         if (!$profile->isLocal ()) {
                                 // create one!
                                 $aprofile = self::create_from_local_profile ($profile);
                         } else {
-                                throw new Exception ('No Activitypub_profile for Profile ID: '.$profile_id. ', this probably is a local profile.');
+                                throw new Exception ('No Activitypub_profile for Profile ID: '.$profile_id. ', this is a local user.');
                         }
                 }
 
@@ -200,6 +205,7 @@ class Activitypub_profile extends Profile
          * One must be careful not to give a user profile to this function
          * as only remote users have ActivityPub_profiles on local instance
          *
+         * @author Diogo Cordeiro <diogo@fc.up.pt>
          * @param Profile $profile
          * @return Activitypub_profile
          */
@@ -227,6 +233,7 @@ class Activitypub_profile extends Profile
         /**
          * Returns sharedInbox if possible, inbox otherwise
          *
+         * @author Diogo Cordeiro <diogo@fc.up.pt>
          * @return string Inbox URL
          */
         public function get_inbox ()
@@ -236,5 +243,123 @@ class Activitypub_profile extends Profile
                 }
 
                 return $this->sharedInboxuri;
+        }
+
+        /**
+         * Getter for uri property
+         *
+         * @author Diogo Cordeiro <diogo@fc.up.pt>
+         * @return string URI
+         */
+        public function get_uri ()
+        {
+                return $this->uri;
+        }
+
+        /**
+         * Ensures a valid Activitypub_profile when provided with a valid URI.
+         *
+         * @author Diogo Cordeiro <diogo@fc.up.pt>
+         * @param string $url
+         * @return Activitypub_profile
+         * @throws Exception if it isn't possible to return an Activitypub_profile
+         */
+        public static function get_from_uri ($url)
+        {
+                $explorer = new Activitypub_explorer ();
+                $profiles_found = $explorer->lookup ($url);
+                if (!empty ($profiles_found)) {
+                        return self::from_profile ($profiles_found[0]);
+                } else {
+                        throw new Exception ('No valid ActivityPub profile found for given URI');
+                }
+                // If it doesn't return a valid Activitypub_profile an exception will
+                // have been thrown before getting to this point.
+        }
+
+        /**
+         * Look up, and if necessary create, an Activitypub_profile for the remote
+         * entity with the given webfinger address.
+         * This should never return null -- you will either get an object or
+         * an exception will be thrown.
+         *
+         * @author GNU Social
+         * @author Diogo Cordeiro <diogo@fc.up.pt>
+         * @param string $addr webfinger address
+         * @return Activitypub_profile
+         * @throws Exception on error conditions
+         */
+        public static function ensure_web_finger ($addr)
+        {
+                // Normalize $addr, i.e. add 'acct:' if missing
+                $addr = Discovery::normalize ($addr);
+
+                // Try the cache
+                $uri = self::cacheGet (sprintf ('activitypub_profile:webfinger:%s', $addr));
+
+                if ($uri !== false) {
+                        if (is_null ($uri)) {
+                                // Negative cache entry
+                                // TRANS: Exception.
+                                throw new Exception (_m ('Not a valid webfinger address (via cache).'));
+                        }
+                        try {
+                                return self::get_from_uri ($uri);
+                        } catch (Exception $e) {
+                            common_log (LOG_ERR, sprintf (__METHOD__ . ': Webfinger address cache inconsistent with database, did not find Activitypub_profile uri==%s', $uri));
+                            self::cacheSet (sprintf ('activitypub_profile:webfinger:%s', $addr), false);
+                        }
+                }
+
+                // Now, try some discovery
+
+                $disco = new Discovery ();
+
+                try {
+                        $xrd = $disco->lookup ($addr);
+                } catch (Exception $e) {
+                        // Save negative cache entry so we don't waste time looking it up again.
+                        // @todo FIXME: Distinguish temporary failures?
+                        self::cacheSet (sprintf ('activitypub_profile:webfinger:%s', $addr), null);
+                        // TRANS: Exception.
+                        throw new Exception (_m ('Not a valid webfinger address.'));
+                }
+
+                $hints = array_merge (array ('webfinger' => $addr),
+                DiscoveryHints::fromXRD ($xrd));
+
+                // If there's an Hcard, let's grab its info
+                if (array_key_exists ('hcard', $hints)) {
+                        if (!array_key_exists ('profileurl', $hints) ||
+                        $hints['hcard'] != $hints['profileurl']) {
+                                $hcardHints = DiscoveryHints::fromHcardUrl ($hints['hcard']);
+                                $hints = array_merge ($hcardHints, $hints);
+                        }
+                }
+
+                // If we got a profile page, try that!
+                $profileUrl = null;
+                if (array_key_exists ('profileurl', $hints)) {
+                        $profileUrl = $hints['profileurl'];
+                        try {
+                                common_log (LOG_INFO, "Discovery on acct:$addr with profile URL $profileUrl");
+                                $aprofile = self::get_from_uri ($hints['profileurl']);
+                                self::cacheSet (sprintf ('activitypub_profile:webfinger:%s', $addr), $aprofile->get_uri ());
+                                return $aprofile;
+                        } catch (Exception $e) {
+                                common_log (LOG_WARNING, "Failed creating profile from profile URL '$profileUrl': " . $e->getMessage ());
+                                // keep looking
+                                //
+                                // @todo FIXME: This means an error discovering from profile page
+                                // may give us a corrupt entry using the webfinger URI, which
+                                // will obscure the correct page-keyed profile later on.
+                        }
+                }
+
+                // XXX: try hcard
+                // XXX: try FOAF
+
+                // TRANS: Exception. %s is a webfinger address.
+                throw new Exception (sprintf (_m ('Could not find a valid profile for "%s".'), $addr));
         }
 }

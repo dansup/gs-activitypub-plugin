@@ -49,6 +49,7 @@ class Activitypub_explorer
          * This function cleans the $this->discovered_actor_profiles array
          * so that there is no erroneous data
          *
+         * @author Diogo Cordeiro <diogo@fc.up.pt>
          * @param string $url User's url
          * @return array of Profile objects
          */
@@ -64,6 +65,7 @@ class Activitypub_explorer
          * This is a recursive function that will accumulate the results on
          * $discovered_actor_profiles array
          *
+         * @author Diogo Cordeiro <diogo@fc.up.pt>
          * @param string $url User's url
          * @return array of Profile objects
          */
@@ -83,6 +85,7 @@ class Activitypub_explorer
          * Get a local user profiles from its URL and joins it on
          * $this->discovered_actor_profiles
          *
+         * @author Diogo Cordeiro <diogo@fc.up.pt>
          * @param string $url User's url
          * @return boolean success state
          */
@@ -116,6 +119,7 @@ class Activitypub_explorer
          * Get a remote user(s) profile(s) from its URL and joins it on
          * $this->discovered_actor_profiles
          *
+         * @author Diogo Cordeiro <diogo@fc.up.pt>
          * @param string $url User's url
          * @return boolean success state
          */
@@ -152,6 +156,7 @@ class Activitypub_explorer
         /**
          * Save remote user profile in local instance
          *
+         * @author Diogo Cordeiro <diogo@fc.up.pt>
          * @param array $res remote response
          * @return Profile remote Profile object
          */
@@ -174,6 +179,7 @@ class Activitypub_explorer
          * Validates a remote response in order to determine whether this
          * response is a valid profile or not
          *
+         * @author Diogo Cordeiro <diogo@fc.up.pt>
          * @param array $res remote response
          * @return boolean success state
          */
@@ -192,12 +198,13 @@ class Activitypub_explorer
          * potential ActivityPub remote profiles, as so it is important to use
          * this hacky workaround (at least for now)
          *
+         * @author Diogo Cordeiro <diogo@fc.up.pt>
          * @param string $v URL
          * @return boolean|Profile false if fails | Profile object if successful
          */
-        static function get_profile_by_url ($v)
+        public static function get_profile_by_url ($v)
         {
-                $i = Managed_DataObject::getcached(Profile, "profileurl", $v);
+                $i = Managed_DataObject::getcached("Profile", "profileurl", $v);
                 if (empty ($i)) { // false = cache miss
                         $i = new Profile;
                         $result = $i->get ("profileurl", $v);
@@ -214,10 +221,11 @@ class Activitypub_explorer
         /**
          * Given a valid actor profile url returns its inboxes
          *
+         * @author Diogo Cordeiro <diogo@fc.up.pt>
          * @param string $url of Actor profile
          * @return boolean|array false if fails | array with inbox and shared inbox if successful
          */
-        static function get_actor_inboxes_uri ($url)
+        public static function get_actor_inboxes_uri ($url)
         {
                 $client    = new HTTPClient ();
                 $headers   = array();

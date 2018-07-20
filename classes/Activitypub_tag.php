@@ -43,6 +43,7 @@ class Activitypub_tag extends Managed_DataObject
         /**
          * Generates a pretty tag from a Tag object
          *
+         * @author Diogo Cordeiro <diogo@fc.up.pt>
          * @param Tag $tag
          * @return pretty array to be used in a response
          */

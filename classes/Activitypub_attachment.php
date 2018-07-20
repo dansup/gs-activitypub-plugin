@@ -43,6 +43,7 @@ class Activitypub_attachment extends Managed_DataObject
         /**
          * Generates a pretty array from an Attachment object
          *
+         * @author Diogo Cordeiro <diogo@fc.up.pt>
          * @param Attachment $attachment
          * @return pretty array to be used in a response
          */

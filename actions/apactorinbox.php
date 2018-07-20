@@ -46,6 +46,7 @@ class apActorInboxAction extends ManagedAction
         /**
          * Handle the Actor Inbox request
          *
+         * @author Diogo Cordeiro <diogo@fc.up.pt>
          * @return void
          */
         protected function handle ()

@@ -1,5 +1,4 @@
 <?php
-require_once dirname (__DIR__) . DIRECTORY_SEPARATOR . "utils" . DIRECTORY_SEPARATOR . "explorer.php";
 /**
  * GNU social - a federating social network
  *
@@ -47,6 +46,7 @@ class apSharedInboxAction extends ManagedAction
         /**
          * Handle the Shared Inbox request
          *
+         * @author Diogo Cordeiro <diogo@fc.up.pt>
          * @return void
          */
         protected function handle ()

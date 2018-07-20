@@ -47,6 +47,7 @@ class apActorProfileAction extends ManagedAction
         /**
          * Handle the Actor Profile request
          *
+         * @author Daniel Supernault <danielsupernault@gmail.com>
          * @return void
          */
         protected function handle()

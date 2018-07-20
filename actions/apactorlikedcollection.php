@@ -46,6 +46,7 @@ class apActorLikedCollectionAction extends ManagedAction
         /**
          * Handle the Liked Collection request
          *
+         * @author Diogo Cordeiro <diogo@fc.up.pt>
          * @return void
          */
         protected function handle ()
@@ -99,6 +100,7 @@ class apActorLikedCollectionAction extends ManagedAction
          * Take a fave object and turns it in a pretty array to be used
          * as a plugin answer
          *
+         * @author Diogo Cordeiro <diogo@fc.up.pt>
          * @param Fave $fave_object
          * @return array pretty array representating a Fave
          */
@@ -114,6 +116,7 @@ class apActorLikedCollectionAction extends ManagedAction
         /**
          * Fetch faves
          *
+         * @author Diogo Cordeiro <diogo@fc.up.pt>
          * @param int32 $user_id
          * @param int32 $limit
          * @param int32 $since_id

@@ -1,5 +1,4 @@
 <?php
-require_once __DIR__ . DIRECTORY_SEPARATOR . "utils" . DIRECTORY_SEPARATOR . "postman.php";
 /**
  * GNU social - a federating social network
  *
@@ -30,6 +29,11 @@ if (!defined ('GNUSOCIAL')) {
         exit (1);
 }
 
+// Import required files by the plugin
+require_once __DIR__ . DIRECTORY_SEPARATOR . "utils" . DIRECTORY_SEPARATOR . "discoveryhints.php";
+require_once __DIR__ . DIRECTORY_SEPARATOR . "utils" . DIRECTORY_SEPARATOR . "explorer.php";
+require_once __DIR__ . DIRECTORY_SEPARATOR . "utils" . DIRECTORY_SEPARATOR . "postman.php";
+
 /**
  * @category  Plugin
  * @package   GNUsocial
@@ -40,6 +44,50 @@ if (!defined ('GNUSOCIAL')) {
  */
 class ActivityPubPlugin extends Plugin
 {
+        /**
+         * Get remote user's ActivityPub_profile via a identifier
+         * (https://www.w3.org/TR/activitypub/#obj-id)
+         *
+         * @author GNU Social
+         * @author Diogo Cordeiro <diogo@fc.up.pt>
+         * @param string $arg A remote user identifier
+         * @return Activitypub_profile|null Valid profile in success | null otherwise
+         */
+        protected function pull_remote_profile ($arg)
+        {
+            if (preg_match ('!^((?:\w+\.)*\w+@(?:\w+\.)*\w+(?:\w+\-\w+)*\.\w+)$!', $arg)) {
+                    // webfinger lookup
+                    try {
+                            return Activitypub_profile::ensure_web_finger ($arg);
+                    } catch (Exception $e) {
+                            common_log(LOG_ERR, 'Webfinger lookup failed for ' .
+                                                $arg . ': ' . $e->getMessage ());
+                    }
+            }
+
+            // Look for profile URLs, with or without scheme:
+            $urls = array ();
+            if (preg_match ('!^https?://((?:\w+\.)*\w+(?:\w+\-\w+)*\.\w+(?:/\w+)+)$!', $arg)) {
+                    $urls[] = $arg;
+            }
+            if (preg_match ('!^((?:\w+\.)*\w+(?:\w+\-\w+)*\.\w+(?:/\w+)+)$!', $arg)) {
+                    $schemes = array ('http', 'https');
+                    foreach ($schemes as $scheme) {
+                            $urls[] = "$scheme://$arg";
+                    }
+            }
+
+            foreach ($urls as $url) {
+                    try {
+                            return Activitypub_profile::get_from_uri ($url);
+                    } catch (Exception $e) {
+                            common_log(LOG_ERR, 'Profile lookup failed for ' .
+                                                $arg . ': ' . $e->getMessage ());
+                    }
+                }
+                return null;
+        }
+
         /**
          * Route/Reroute urls
          *
@@ -77,7 +125,7 @@ class ActivityPubPlugin extends Plugin
          * Plugin version information
          *
          * @param array $versions
-         * @return boolean true
+         * @return boolean hook true
          */
         public function onPluginVersion (array &$versions)
         {
@@ -94,12 +142,259 @@ class ActivityPubPlugin extends Plugin
 
         /**
          * Make sure necessary tables are filled out.
+         *
+         * @return boolean hook true
          */
         function onCheckSchema ()
         {
             $schema = Schema::get ();
             $schema->ensureTable ('Activitypub_profile', Activitypub_profile::schemaDef());
             return true;
+        }
+
+            /********************************************************
+             *                   Discovery Events                   *
+             ********************************************************/
+
+        /**
+        * Webfinger matches: @user@example.com or even @user--one.george_orwell@1984.biz
+        *
+        * @author GNU Social
+        * @param   string  $text       The text from which to extract webfinger IDs
+        * @param   string  $preMention Character(s) that signals a mention ('@', '!'...)
+        * @return  array   The matching IDs (without $preMention) and each respective position in the given string.
+        */
+        static function extractWebfingerIds ($text, $preMention='@')
+        {
+                $wmatches = array ();
+                $result = preg_match_all ('/(?<!\S)'.preg_quote ($preMention, '/').'('.Nickname::WEBFINGER_FMT.')/',
+                                $text,
+                                $wmatches,
+                                PREG_OFFSET_CAPTURE);
+                if ($result === false) {
+                        common_log (LOG_ERR, __METHOD__ . ': Error parsing webfinger IDs from text (preg_last_error=='.preg_last_error ().').');
+                } elseif (count ($wmatches)) {
+                        common_debug (sprintf ('Found %d matches for WebFinger IDs: %s', count ($wmatches), _ve ($wmatches)));
+                }
+                return $wmatches[1];
+        }
+
+        /**
+         * Profile URL matches: @example.com/mublog/user
+         *
+         * @author GNU Social
+         * @param   string  $text       The text from which to extract URL mentions
+         * @param   string  $preMention Character(s) that signals a mention ('@', '!'...)
+         * @return  array   The matching URLs (without @ or acct:) and each respective position in the given string.
+         */
+        static function extractUrlMentions ($text, $preMention='@')
+        {
+                $wmatches = array ();
+                // In the regexp below we need to match / _before_ URL_REGEX_VALID_PATH_CHARS because it otherwise gets merged
+                // with the TLD before (but / is in URL_REGEX_VALID_PATH_CHARS anyway, it's just its positioning that is important)
+                $result = preg_match_all ('/(?:^|\s+)'.preg_quote ($preMention, '/').'('.URL_REGEX_DOMAIN_NAME.'(?:\/['.URL_REGEX_VALID_PATH_CHARS.']*)*)/',
+                                $text,
+                                $wmatches,
+                                PREG_OFFSET_CAPTURE);
+                if ($result === false) {
+                        common_log (LOG_ERR, __METHOD__ . ': Error parsing profile URL mentions from text (preg_last_error=='.preg_last_error ().').');
+                } elseif (count ($wmatches)) {
+                        common_debug(sprintf('Found %d matches for profile URL mentions: %s', count ($wmatches), _ve ($wmatches)));
+                }
+                return $wmatches[1];
+        }
+
+        /**
+         * Find any explicit remote mentions. Accepted forms:
+         *   Webfinger: @user@example.com
+         *   Profile link: @example.com/mublog/user
+         *
+         * @author GNU Social
+         * @author Diogo Cordeiro <diogo@fc.up.pt>
+         * @param Profile $sender
+         * @param string $text input markup text
+         * @param array &$mention in/out param: set of found mentions
+         * @return boolean hook return value
+         */
+        function onEndFindMentions(Profile $sender, $text, &$mentions)
+        {
+                $matches = array();
+
+                foreach (self::extractWebfingerIds($text, '@') as $wmatch) {
+                        list($target, $pos) = $wmatch;
+                        $this->log(LOG_INFO, "Checking webfinger person '$target'");
+                        $profile = null;
+                        try {
+                                $aprofile = Activitypub_profile::ensure_web_finger($target);
+                                $profile = $aprofile->local_profile();
+                        } catch (Exception $e) {
+                                $this->log(LOG_ERR, "Webfinger check failed: " . $e->getMessage());
+                                continue;
+                        }
+                        assert ($profile instanceof Profile);
+
+                        $displayName = !empty ($profile->nickname) && mb_strlen ($profile->nickname) < mb_strlen ($target)
+                        ? $profile->getNickname ()   // TODO: we could do getBestName() or getFullname() here
+                        : $target;
+                        $url = $profile->getUri ();
+                        if (!common_valid_http_url ($url)) {
+                                $url = $profile->getUrl ();
+                        }
+                        $matches[$pos] = array('mentioned' => array ($profile),
+                                               'type' => 'mention',
+                                               'text' => $displayName,
+                                               'position' => $pos,
+                                               'length' => mb_strlen ($target),
+                                               'url' => $url);
+                }
+
+                foreach (self::extractUrlMentions ($text) as $wmatch) {
+                        list ($target, $pos) = $wmatch;
+                        $schemes = array('https', 'http');
+                        foreach ($schemes as $scheme) {
+                                $url = "$scheme://$target";
+                                $this->log(LOG_INFO, "Checking profile address '$url'");
+                                try {
+                                        $aprofile = Activitypub_profile::get_from_uri ($url);
+                                        $profile = $aprofile->local_profile();
+                                        $displayName = !empty ($profile->nickname) && mb_strlen ($profile->nickname) < mb_strlen ($target) ?
+                                        $profile->nickname : $target;
+                                        $matches[$pos] = array('mentioned' => array ($profile),
+                                                               'type' => 'mention',
+                                                               'text' => $displayName,
+                                                               'position' => $pos,
+                                                               'length' => mb_strlen ($target),
+                                                               'url' => $profile->getUrl());
+                                        break;
+                                } catch (Exception $e) {
+                                        $this->log(LOG_ERR, "Profile check failed: " . $e->getMessage());
+                                }
+                        }
+                }
+
+                foreach ($mentions as $i => $other) {
+                        // If we share a common prefix with a local user, override it!
+                        $pos = $other['position'];
+                        if (isset ($matches[$pos])) {
+                                $mentions[$i] = $matches[$pos];
+                                unset ($matches[$pos]);
+                        }
+                }
+                foreach ($matches as $mention) {
+                        $mentions[] = $mention;
+                }
+
+                return true;
+        }
+
+        /**
+         * Allow remote profile references to be used in commands:
+         *   sub update@status.net
+         *   whois evan@identi.ca
+         *   reply http://identi.ca/evan hey what's up
+         *
+         * @author GNU Social
+         * @author Diogo Cordeiro <diogo@fc.up.pt>
+         * @param Command $command
+         * @param string $arg
+         * @param Profile &$profile
+         * @return hook return code
+         */
+        function onStartCommandGetProfile ($command, $arg, &$profile)
+        {
+                try {
+                        $aprofile = $this->pull_remote_profile ($arg);
+                        $profile = $aprofile->local_profile();
+                } catch (Exception $e) {
+                        // No remote ActivityPub profile found
+                        return true;
+                }
+
+                return false;
+        }
+
+        /**
+         * Profile URI for remote profiles.
+         *
+         * @author GNU Social
+         * @author Diogo Cordeiro <diogo@fc.up.pt>
+         * @param Profile $profile
+         * @param string $uri in/out
+         * @return mixed hook return code
+         */
+        function onStartGetProfileUri ($profile, &$uri)
+        {
+                $aprofile = Activitypub_profile::getKV ('profile_id', $profile->id);
+                if ($aprofile instanceof Activitypub_profile) {
+                        $uri = $aprofile->get_uri ();
+                        return false;
+                }
+                return true;
+        }
+
+
+        /**
+         * Dummy string on AccountProfileBlock stating that ActivityPub is active
+         * this is more of a placeholder for eventual useful stuff ._.
+         *
+         * @author Diogo Cordeiro <diogo@fc.up.pt>
+         * @return void
+         */
+        function onEndShowAccountProfileBlock (HTMLOutputter $out, Profile $profile)
+        {
+                if ($profile->isLocal()) {
+                        return true;
+                }
+                try {
+                        $aprofile = Activitypub_profile::getKV ('profile_id', $profile->id);
+                } catch (NoResultException $e) {
+                        // Not a remote ActivityPub_profile! Maybe some other network
+                        // that has imported a non-local user (e.g.: OStatus)?
+                        return true;
+                }
+
+                $out->elementStart('dl', 'entity_tags activitypub_profile');
+                $out->element('dt', null, _m('ActivityPub'));
+                $out->element('dd', null, _m('Active'));
+                $out->elementEnd('dl');
+        }
+
+        /**
+         * Profile from URI.
+         *
+         * @author GNU Social
+         * @author Diogo Cordeiro <diogo@fc.up.pt>
+         * @param string $uri
+         * @param Profile &$profile in/out param: Profile got from URI
+         * @return mixed hook return code
+         */
+        function onStartGetProfileFromURI ($uri, &$profile)
+        {
+                // Don't want to do Web-based discovery on our own server,
+                // so we check locally first. This duplicates the functionality
+                // in the Profile class, since the plugin always runs before
+                // that local lookup, but since we return false it won't run double.
+
+                $user = User::getKV ('uri', $uri);
+                if ($user instanceof User) {
+                        $profile = $user->getProfile();
+                        return false;
+                } else {
+                        $group = User_group::getKV ('uri', $uri);
+                        if ($group instanceof User_group) {
+                                $profile = $group->getProfile ();
+                                return false;
+                        }
+                }
+
+                // Now, check remotely
+                try {
+                        $aprofile = Activitypub_profile::get_from_uri ($uri);
+                        $profile = $aprofile->local_profile ();
+                        return false;
+                } catch (Exception $e) {
+                        return true; // It's not an ActivityPub profile as far as we know, continue event handling
+                }
         }
 
             /********************************************************
@@ -110,6 +405,7 @@ class ActivityPubPlugin extends Plugin
          * Having established a remote subscription, send a notification to the
          * remote ActivityPub profile's endpoint.
          *
+         * @author Diogo Cordeiro <diogo@fc.up.pt>
          * @param Profile $profile  subscriber
          * @param Profile $other    subscribee
          * @return hook return value
@@ -137,6 +433,7 @@ class ActivityPubPlugin extends Plugin
         /**
          * Notify remote server on unsubscribe.
          *
+         * @author Diogo Cordeiro <diogo@fc.up.pt>
          * @param Profile $profile
          * @param Profile $other
          * @return hook return value
@@ -163,6 +460,7 @@ class ActivityPubPlugin extends Plugin
         /**
          * Notify remote users when their notices get favorited.
          *
+         * @author Diogo Cordeiro <diogo@fc.up.pt>
          * @param Profile $profile of local user doing the faving
          * @param Notice $notice Notice being favored
          * @return hook return value
@@ -221,6 +519,7 @@ class ActivityPubPlugin extends Plugin
         /**
          * Notify remote users when their notices get de-favorited.
          *
+         * @author Diogo Cordeiro <diogo@fc.up.pt>
          * @param Profile $profile of local user doing the de-faving
          * @param Notice  $notice  Notice being favored
          * @return hook return value
@@ -279,6 +578,7 @@ class ActivityPubPlugin extends Plugin
         /**
          * Notify remote users when their notices get deleted
          *
+         * @author Diogo Cordeiro <diogo@fc.up.pt>
          * @return boolean hook flag
          */
         public function onEndDeleteOwnNotice ($user, $notice)
@@ -331,6 +631,7 @@ class ActivityPubPlugin extends Plugin
         /**
          * Insert notifications for replies, mentions and repeats
          *
+         * @author Diogo Cordeiro <diogo@fc.up.pt>
          * @return boolean hook flag
          */
         function onStartNoticeDistribute ($notice)
@@ -416,6 +717,7 @@ class ActivityPubPlugin extends Plugin
          * Override the "from ActivityPub" bit in notice lists to link to the
          * original post and show the domain it came from.
          *
+         * @author Diogo Cordeiro <diogo@fc.up.pt>
          * @param Notice in $notice
          * @param string out &$name
          * @param string out &$url
@@ -450,23 +752,6 @@ class ActivityPubPlugin extends Plugin
                     // This just means we don't have the notice source data
                     return true;
             }
-        }
-
-        /**
-         * Profile URI for remote profiles.
-         *
-         * @param Profile $profile
-         * @param string $uri in/out
-         * @return mixed hook return code
-         */
-        function onStartGetProfileUri ($profile, &$uri)
-        {
-                $aprofile = Activitypub_profile::getKV ('profile_id', $profile->id);
-                if ($aprofile instanceof Activitypub_profile) {
-                        $uri = $aprofile->uri;
-                        return false;
-                }
-                return true;
         }
 }
 
@@ -504,6 +789,7 @@ class ActivityPubReturn
         /**
          * Return a valid answer
          *
+         * @author Diogo Cordeiro <diogo@fc.up.pt>
          * @param array $res
          * @return void
          */
@@ -517,6 +803,7 @@ class ActivityPubReturn
         /**
          * Return an error
          *
+         * @author Diogo Cordeiro <diogo@fc.up.pt>
          * @param string $m
          * @param int32 $code
          * @return void

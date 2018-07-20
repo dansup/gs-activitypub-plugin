@@ -51,6 +51,7 @@ class Activitypub_postman
         /**
          * Create a postman to deliver something to someone
          *
+         * @author Diogo Cordeiro <diogo@fc.up.pt>
          * @param Profile of sender
          * @param Activitypub_profile $to array of destinataries
          */
@@ -66,6 +67,8 @@ class Activitypub_postman
 
         /**
          * Send a follow notification to remote instance
+         *
+         * @author Diogo Cordeiro <diogo@fc.up.pt>
          */
         public function follow ()
         {
@@ -79,6 +82,8 @@ class Activitypub_postman
 
         /**
          * Send a Undo Follow notification to remote instance
+         *
+         * @author Diogo Cordeiro <diogo@fc.up.pt>
          */
         public function undo_follow ()
         {
@@ -97,6 +102,7 @@ class Activitypub_postman
         /**
          * Send a Like notification to remote instances holding the notice
          *
+         * @author Diogo Cordeiro <diogo@fc.up.pt>
          * @param Notice $notice
          */
         public function like ($notice)
@@ -114,6 +120,7 @@ class Activitypub_postman
         /**
          * Send a Undo Like notification to remote instances holding the notice
          *
+         * @author Diogo Cordeiro <diogo@fc.up.pt>
          * @param Notice $notice
          */
         public function undo_like ($notice)
@@ -135,6 +142,7 @@ class Activitypub_postman
         /**
          * Send a Announce notification to remote instances
          *
+         * @author Diogo Cordeiro <diogo@fc.up.pt>
          * @param Notice $notice
          */
         public function announce ($notice)
@@ -156,6 +164,7 @@ class Activitypub_postman
         /**
          * Send a Create notification to remote instances
          *
+         * @author Diogo Cordeiro <diogo@fc.up.pt>
          * @param Notice $notice
          */
         public function create ($notice)
@@ -183,6 +192,7 @@ class Activitypub_postman
         /**
          * Send a Delete notification to remote instances holding the notice
          *
+         * @author Diogo Cordeiro <diogo@fc.up.pt>
          * @param Notice $notice
          */
         public function delete ($notice)
@@ -201,6 +211,7 @@ class Activitypub_postman
         /**
          * Clean list of inboxes to deliver messages
          *
+         * @author Diogo Cordeiro <diogo@fc.up.pt>
          * @return array To Inbox URLs
          */
         private function to_inbox ()

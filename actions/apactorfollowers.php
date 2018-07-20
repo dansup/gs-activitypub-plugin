@@ -46,6 +46,7 @@ class apActorFollowersAction extends ManagedAction
         /**
          * Handle the Followers Collection request
          *
+         * @author Diogo Cordeiro <diogo@fc.up.pt>
          * @return void
          */
         protected function handle ()
