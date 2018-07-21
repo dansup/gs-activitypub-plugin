@@ -9,12 +9,21 @@ trait CreatesApplication
      *
      * @return todo
      */
-    public function createApplication()
+    public static function createApplication()
     {
-        define('GNUSOCIAL', true);
-        define('STATUSNET', true);  // compatibility
+        if(!defined('INSTALLDIR')) {
+            define('INSTALLDIR', __DIR__ . '/../../../');
+        }
+        if(!defined('GNUSOCIAL')) {
+            define('GNUSOCIAL', true);
+        }
+        if(!defined('STATUSNET')) {
+            define('STATUSNET', true);  // compatibility
+        }
 
-        return require_once __DIR__. '/../../lib/common.php';
+        require INSTALLDIR . '/lib/common.php';
+
+        return true;
 
     }
 }
