@@ -1,0 +1,25 @@
+{
+    "name": "dansup/activity-pub",
+    "description": "ActivityPub plugin for GNU/Social",
+    "type": "gnusocial-plugin",
+    "require": {},
+    "require-dev": {
+        "phpunit/phpunit": "^7.2"
+    },
+    "license": "AGPL",
+    "autoload": {
+        "psr-4": {
+            "Tests\\": "tests/"
+        }
+    },
+    "authors": [
+        {
+            "name": "Daniel Supernault",
+            "email": "danielsupernault@gmail.com"
+        },
+        {
+            "name": "Diogo Cordeiro",
+            "email": "diogo@fc.up.pt"
+        }
+    ]
+}
