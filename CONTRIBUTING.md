@@ -5,8 +5,10 @@ email, or any other method with the owners of this repository before making a ch
 
 Please note we have a code of conduct, please follow it in all your interactions with the project.
 
-# Indentation Style
-We are using [K&R Variant: Linux kernel](https://en.wikipedia.org/wiki/Indentation_style#Variant:_Linux_kernel) with spaces before every `(`.
+# Coding Style
+- We are using [K&R Variant: Linux kernel](https://en.wikipedia.org/wiki/Indentation_style#Variant:_Linux_kernel) with spaces before every `(`.
+- Every function has a docblock explaining what it does and stating the author, parameters, types, return and exceptions
+- We use snake_case
 
 ## Pull Request Process
 
