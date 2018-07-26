@@ -25,8 +25,8 @@
  * @license   http://www.fsf.org/licensing/licenses/agpl-3.0.html GNU Affero General Public License version 3.0
  * @link      https://www.gnu.org/software/social/
  */
-if (!defined ('GNUSOCIAL')) {
-        exit (1);
+if (!defined('GNUSOCIAL')) {
+    exit(1);
 }
 
 /**
@@ -40,64 +40,62 @@ if (!defined ('GNUSOCIAL')) {
  */
 class apActorFollowingAction extends ManagedAction
 {
-        protected $needLogin = false;
-        protected $canPost   = true;
+    protected $needLogin = false;
+    protected $canPost   = true;
 
-        /**
-         * Handle the Following Collection request
-         *
-         * @author Diogo Cordeiro <diogo@fc.up.pt>
-         * @return void
-         */
-        protected function handle ()
-        {
-                $nickname = $this->trimmed ('nickname');
-                try {
-                        $user    = User::getByNickname ($nickname);
-                        $profile = $user->getProfile ();
-                        $url     = $profile->profileurl;
-                } catch (Exception $e) {
-                        ActivityPubReturn::error ('Invalid username.');
-                }
+    /**
+     * Handle the Following Collection request
+     *
+     * @author Diogo Cordeiro <diogo@fc.up.pt>
+     * @return void
+     */
+    protected function handle()
+    {
+        try {
+            $profile = Profile::getByID($this->trimmed('id'));
+            $url     = ActivityPubPlugin::actor_url($profile);
+        } catch (Exception $e) {
+            ActivityPubReturn::error('Invalid Actor URI.', 404);
+        }
 
-                if (!isset ($_GET["page"])) {
-                        $page = 1;
-                } else {
-                        $page = intval ($this->trimmed ('page'));
-                }
+        if (!isset($_GET["page"])) {
+            $page = 1;
+        } else {
+            $page = intval($this->trimmed('page'));
+        }
 
-                if ($page <= 0) {
-                        ActivityPubReturn::error ('Invalid page number.');
-                }
+        if ($page <= 0) {
+            ActivityPubReturn::error('Invalid page number.');
+        }
 
-                /* Fetch Following */
-                try {
-                        $since = ($page - 1) * PROFILES_PER_MINILIST;
-                        $limit = (($page - 1) == 0 ? 1 : $page) * PROFILES_PER_MINILIST;
-                        $sub   = $profile->getSubscribed ($since, $limit);
-                } catch (NoResultException $e) {
-                        ActivityPubReturn::error ('This user is not following anyone.');
-                }
+        /* Fetch Following */
+        try {
+            $since = ($page - 1) * PROFILES_PER_MINILIST;
+            $limit = (($page - 1) == 0 ? 1 : $page) * PROFILES_PER_MINILIST;
+            $sub   = $profile->getSubscribed($since, $limit);
+        } catch (NoResultException $e) {
+            ActivityPubReturn::error('This user is not following anyone.');
+        }
 
-                /* Calculate total items */
-                $total_subs  = $profile->subscriptionCount();
-                $total_pages = ceil ($total_subs / PROFILES_PER_MINILIST);
+        /* Calculate total items */
+        $total_subs  = $profile->subscriptionCount();
+        $total_pages = ceil($total_subs / PROFILES_PER_MINILIST);
 
-                if ($total_pages == 0) {
-                        ActivityPubReturn::error ('This user is not following anyone.');
-                }
+        if ($total_pages == 0) {
+            ActivityPubReturn::error('This user is not following anyone.');
+        }
 
-                if ($page > $total_pages) {
-                        ActivityPubReturn::error ("There are only {$total_pages} pages.");
-                }
+        if ($page > $total_pages) {
+            ActivityPubReturn::error("There are only {$total_pages} pages.");
+        }
 
-                /* Get followed' URLs */
-                $subs = array ();
-                while ($sub->fetch ()) {
-                        $subs[] = $sub->profileurl;
-                }
+        /* Get followed' URLs */
+        $subs = array();
+        while ($sub->fetch()) {
+            $subs[] = $sub->profileurl;
+        }
 
-                $res = [
+        $res = [
                   '@context'     => [
                     "https://www.w3.org/ns/activitystreams",
                     "https://w3id.org/security/v1",
@@ -110,6 +108,6 @@ class apActorFollowingAction extends ManagedAction
                   'orderedItems' => $subs
                 ];
 
-                ActivityPubReturn::answer ($res);
-        }
+        ActivityPubReturn::answer($res);
+    }
 }

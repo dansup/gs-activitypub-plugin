@@ -25,8 +25,8 @@
  * @license   http://www.fsf.org/licensing/licenses/agpl-3.0.html GNU Affero General Public License version 3.0
  * @link      https://www.gnu.org/software/social/
  */
-if (!defined ('GNUSOCIAL')) {
-        exit (1);
+if (!defined('GNUSOCIAL')) {
+    exit(1);
 }
 
 /**
@@ -40,57 +40,59 @@ if (!defined ('GNUSOCIAL')) {
  */
 class apActorInboxAction extends ManagedAction
 {
-        protected $needLogin = false;
-        protected $canPost   = true;
+    protected $needLogin = false;
+    protected $canPost   = true;
 
-        /**
-         * Handle the Actor Inbox request
-         *
-         * @author Diogo Cordeiro <diogo@fc.up.pt>
-         * @return void
-         */
-        protected function handle ()
-        {
-                $nickname  = $this->trimmed ('nickname');
-                try {
-                        $user    = User::getByNickname ($nickname);
-                        $profile = $user->getProfile ();
-                        $url     = $profile->profileurl;
-                } catch (Exception $e) {
-                        ActivityPubReturn::error ("Invalid username.");
-                }
+    /**
+     * Handle the Actor Inbox request
+     *
+     * @author Diogo Cordeiro <diogo@fc.up.pt>
+     * @return void
+     */
+    protected function handle()
+    {
+        try {
+            $profile = Profile::getByID($this->trimmed('id'));
+        } catch (Exception $e) {
+            ActivityPubReturn::error('Invalid Actor URI.', 404);
+        }
 
-                if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-                        ActivityPubReturn::error ("C2S not implemented just yet.");
-                }
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            ActivityPubReturn::error("C2S not implemented just yet.");
+        }
 
-                $data = json_decode (file_get_contents ('php://input'));
+        $data = json_decode(file_get_contents('php://input'));
 
-                // Validate data
-                if (!(isset ($data->type))) {
-                        ActivityPubReturn::error ("Type was not specified.");
-                }
-                if (!isset ($data->actor)) {
-                        ActivityPubReturn::error ("Actor was not specified.");
-                }
-                if (!isset ($data->object)) {
-                        ActivityPubReturn::error ("Object was not specified.");
-                }
+        // Validate data
+        if (!(isset($data->type))) {
+            ActivityPubReturn::error("Type was not specified.");
+        }
+        if (!isset($data->actor)) {
+            ActivityPubReturn::error("Actor was not specified.");
+        }
+        if (!isset($data->object)) {
+            ActivityPubReturn::error("Object was not specified.");
+        }
 
-                // Get valid Actor object
-                try {
-                        require_once dirname (__DIR__) . DIRECTORY_SEPARATOR . "utils" . DIRECTORY_SEPARATOR . "explorer.php";
-                        $actor_profile = new Activitypub_explorer;
-                        $actor_profile = $actor_profile->lookup ($data->actor);
-                        $actor_profile = $actor_profile[0];
-                } catch (Exception $e) {
-                        ActivityPubReturn::error ("Invalid Actor.", 404);
-                }
+        // Get valid Actor object
+        try {
+            require_once dirname(__DIR__) . DIRECTORY_SEPARATOR . "utils" . DIRECTORY_SEPARATOR . "explorer.php";
+            $actor_profile = new Activitypub_explorer;
+            $actor_profile = $actor_profile->lookup($data->actor);
+            $actor_profile = $actor_profile[0];
+        } catch (Exception $e) {
+            ActivityPubReturn::error("Invalid Actor.", 404);
+        }
 
-                $to_profiles = array ($user);
+        // Public To:
+        $public_to = array("https://www.w3.org/ns/activitystreams#Public",
+                                    "Public",
+                                    "as:Public");
 
-                // Process request
-                switch ($data->type) {
+        $to_profiles = array($profile);
+
+        // Process request
+        switch ($data->type) {
                         case "Create":
                                 require_once __DIR__ . DIRECTORY_SEPARATOR . "inbox" . DIRECTORY_SEPARATOR . "Create.php";
                                 break;
@@ -109,8 +111,14 @@ class apActorInboxAction extends ManagedAction
                         case "Announce":
                                 require_once __DIR__ . DIRECTORY_SEPARATOR . "inbox" . DIRECTORY_SEPARATOR . "Announce.php";
                                 break;
+                        case "Accept":
+                                require_once __DIR__ . DIRECTORY_SEPARATOR . "inbox" . DIRECTORY_SEPARATOR . "Accept.php";
+                                break;
+                        case "Reject":
+                                require_once __DIR__ . DIRECTORY_SEPARATOR . "inbox" . DIRECTORY_SEPARATOR . "Reject.php";
+                                break;
                         default:
-                                ActivityPubReturn::error ("Invalid type value.");
+                                ActivityPubReturn::error("Invalid type value.");
                 }
-        }
+    }
 }

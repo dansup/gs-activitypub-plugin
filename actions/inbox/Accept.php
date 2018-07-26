@@ -29,37 +29,30 @@ if (!defined('GNUSOCIAL')) {
     exit(1);
 }
 
-/**
- * ActivityPub representation of a Tag
- *
- * @category  Plugin
- * @package   GNUsocial
- * @author    Diogo Cordeiro <diogo@fc.up.pt>
- * @license   http://www.fsf.org/licensing/licenses/agpl-3.0.html GNU Affero General Public License version 3.0
- * @link      http://www.gnu.org/software/social/
- */
-class Activitypub_tag extends Managed_DataObject
-{
-    /**
-     * Generates a pretty tag from a Tag object
-     *
-     * @author Diogo Cordeiro <diogo@fc.up.pt>
-     * @param Tag $tag
-     * @return pretty array to be used in a response
-     */
-    public static function tag_to_array($tag)
-    {
-        $res = [
-                '@context'          => [
-                "https://www.w3.org/ns/activitystreams",
-                [
-                  "@language" => "en"
-                ]
-                ],
-                'name' => $tag,
-                'url'  => common_local_url('tag', array('tag' => $tag))
-                ];
+// Validate data
+if (!isset($data->type)) {
+    ActivityPubReturn::error("Type was not specified.");
+}
 
-        return $res;
-    }
+switch ($data->object->type) {
+case "Follow":
+        // Validate data
+        if (!isset($data->object->object)) {
+            ActivityPubReturn::error("Object Actor URL was not specified.");
+        }
+        // Get valid Object profile
+        try {
+            $object_profile = new Activitypub_explorer;
+            $object_profile = $object_profile->lookup($data->object->object)[0];
+        } catch (Exception $e) {
+            ActivityPubReturn::error("Invalid Object Actor URL.", 404);
+        }
+
+        $pending_list = new Activitypub_pending_follow_requests($actor_profile->getID(), $object_profile->getID());
+        $pending_list->remove();
+        ActivityPubReturn::answer($data); // You are now being followed by this person.
+        break;
+default:
+        ActivityPubReturn::error("Invalid object type.");
+        break;
 }

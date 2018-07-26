@@ -25,8 +25,8 @@
  * @license   http://www.fsf.org/licensing/licenses/agpl-3.0.html GNU Affero General Public License version 3.0
  * @link      https://www.gnu.org/software/social/
  */
-if (!defined ('GNUSOCIAL')) {
-        exit (1);
+if (!defined('GNUSOCIAL')) {
+    exit(1);
 }
 
 /**
@@ -41,51 +41,51 @@ if (!defined ('GNUSOCIAL')) {
  */
 class Activitypub_notice extends Managed_DataObject
 {
-        /**
-         * Generates a pretty notice from a Notice object
-         *
-         * @author Daniel Supernault <danielsupernault@gmail.com>
-         * @author Diogo Cordeiro <diogo@fc.up.pt>
-         * @param Notice $notice
-         * @return pretty array to be used in a response
-         */
-        public static function notice_to_array ($notice)
-        {
-                $attachments = array ();
-                foreach($notice->attachments () as $attachment) {
-                        $attachments[] = Activitypub_attachment::attachment_to_array ($attachment);
-                }
+    /**
+     * Generates a pretty notice from a Notice object
+     *
+     * @author Daniel Supernault <danielsupernault@gmail.com>
+     * @author Diogo Cordeiro <diogo@fc.up.pt>
+     * @param Notice $notice
+     * @return pretty array to be used in a response
+     */
+    public static function notice_to_array($notice)
+    {
+        $attachments = array();
+        foreach ($notice->attachments() as $attachment) {
+            $attachments[] = Activitypub_attachment::attachment_to_array($attachment);
+        }
 
-                $tags = array ();
-                foreach($notice->getTags()as $tag) {
-                        if ($tag != "") {       // Hacky workaround to avoid stupid outputs
-                                $tags[] = Activitypub_tag::tag_to_array ($tag);
-                        }
-                }
+        $tags = array();
+        foreach ($notice->getTags() as $tag) {
+            if ($tag != "") {       // Hacky workaround to avoid stupid outputs
+                $tags[] = Activitypub_tag::tag_to_array($tag);
+            }
+        }
 
-                $to = array ();
-                foreach ($notice->getAttentionProfileIDs () as $to_id) {
-                        $to[] = Profile::getById ($to_id)->getUri ();
-                }
-                if (!is_null($to)) {
-                        $to = array ("https://www.w3.org/ns/activitystreams#Public");
-                }
+        $to = array();
+        foreach ($notice->getAttentionProfiles() as $to_profile) {
+            $to[] = $to_profile->getUri();
+        }
+        if (empty($to)) {
+            $to = array("https://www.w3.org/ns/activitystreams#Public");
+        }
 
-                $item = [
-                        'id'           => $notice->getUrl (),
-                        'type'         => 'Notice',
-                        'actor'        => $notice->getProfile ()->getUrl (),
-                        'published'    => $notice->getCreated (),
+        $item = [
+                        'id'           => $notice->getUri(),
+                        'type'         => 'Note',
+                        'actor'        => $notice->getProfile()->getUrl(),
+                        'published'    => $notice->getCreated(),
                         'to'           => $to,
-                        'content'      => $notice->getContent (),
-                        'url'          => $notice->getUrl (),
-                        'reply_to'     => empty($notice->reply_to) ? null : Notice::getById($notice->reply_to)->getUrl (),
-                        'is_local'     => $notice->isLocal (),
-                        'conversation' => intval ($notice->conversation),
+                        'content'      => $notice->getContent(),
+                        'url'          => $notice->getUrl(),
+                        'reply_to'     => empty($notice->reply_to) ? null : Notice::getById($notice->reply_to)->getUri(),
+                        'is_local'     => $notice->isLocal(),
+                        'conversation' => intval($notice->conversation),
                         'attachment'   => $attachments,
                         'tag'          => $tags
                 ];
 
-                return $item;
-        }
+        return $item;
+    }
 }

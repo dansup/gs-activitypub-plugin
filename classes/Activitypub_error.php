@@ -25,8 +25,8 @@
  * @license   http://www.fsf.org/licensing/licenses/agpl-3.0.html GNU Affero General Public License version 3.0
  * @link      https://www.gnu.org/software/social/
  */
-if (!defined ('GNUSOCIAL')) {
-        exit (1);
+if (!defined('GNUSOCIAL')) {
+    exit(1);
 }
 
 /**
@@ -40,18 +40,18 @@ if (!defined ('GNUSOCIAL')) {
  */
 class Activitypub_error extends Managed_DataObject
 {
-        /**
-         * Generates a pretty error from a string
-         *
-         * @author Diogo Cordeiro <diogo@fc.up.pt>
-         * @param string $m
-         * @return pretty array to be used in a response
-         */
-        public static function error_message_to_array ($m)
-        {
-                $res = [
+    /**
+     * Generates a pretty error from a string
+     *
+     * @author Diogo Cordeiro <diogo@fc.up.pt>
+     * @param string $m
+     * @return pretty array to be used in a response
+     */
+    public static function error_message_to_array($m)
+    {
+        $res = [
                         'error'=> $m
                 ];
-                return $res;
-        }
+        return $res;
+    }
 }

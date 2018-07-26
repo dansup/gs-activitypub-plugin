@@ -29,37 +29,4 @@ if (!defined('GNUSOCIAL')) {
     exit(1);
 }
 
-/**
- * ActivityPub representation of a Tag
- *
- * @category  Plugin
- * @package   GNUsocial
- * @author    Diogo Cordeiro <diogo@fc.up.pt>
- * @license   http://www.fsf.org/licensing/licenses/agpl-3.0.html GNU Affero General Public License version 3.0
- * @link      http://www.gnu.org/software/social/
- */
-class Activitypub_tag extends Managed_DataObject
-{
-    /**
-     * Generates a pretty tag from a Tag object
-     *
-     * @author Diogo Cordeiro <diogo@fc.up.pt>
-     * @param Tag $tag
-     * @return pretty array to be used in a response
-     */
-    public static function tag_to_array($tag)
-    {
-        $res = [
-                '@context'          => [
-                "https://www.w3.org/ns/activitystreams",
-                [
-                  "@language" => "en"
-                ]
-                ],
-                'name' => $tag,
-                'url'  => common_local_url('tag', array('tag' => $tag))
-                ];
-
-        return $res;
-    }
-}
+// This is a dummy file as there is nothing to do if we fall in this case

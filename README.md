@@ -67,4 +67,3 @@ License along with this program, in the file "COPYING".  If not, see
     to your users under the same license. This is a legal requirement
     of using the software, and if you do not wish to share your
     modifications, *YOU MAY NOT USE THIS PLUGIN*.
-

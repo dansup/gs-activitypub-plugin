@@ -25,34 +25,30 @@
  * @license   http://www.fsf.org/licensing/licenses/agpl-3.0.html GNU Affero General Public License version 3.0
  * @link      https://www.gnu.org/software/social/
  */
-if (!defined ('GNUSOCIAL')) {
-        exit (1);
+if (!defined('GNUSOCIAL')) {
+    exit(1);
 }
 
 // Validate Object
-if (!is_string ($data->object)) {
-        ActivityPubReturn::error ("Invalid Object object, URL expected.");
+if (!is_string($data->object)) {
+    ActivityPubReturn::error("Invalid Object object, URL expected.");
 }
 
 // Get valid Object profile
 try {
-        $object_profile = new Activitypub_explorer;
-        $object_profile = $object_profile->lookup ($data->object)[0];
-} catch(Exception $e) {
-        ActivityPubReturn::error ("Invalid Object Actor URL.", 404);
+    $object_profile = new Activitypub_explorer;
+    $object_profile = $object_profile->lookup($data->object)[0];
+} catch (Exception $e) {
+    ActivityPubReturn::error("Invalid Object Actor URL.", 404);
 }
 
 try {
-        if (!Subscription::exists ($actor_profile, $object_profile)) {
-                Subscription::start ($actor_profile, $object_profile);
-                $res = array ("@context" => "https://www.w3.org/ns/activitystreams",
-                          "type"   => "Follow",
-                          "actor"  => $data->actor,
-                          "object" => $data->object);
-                ActivityPubReturn::answer ($res);
-        } else {
-                ActivityPubReturn::error ("Already following.", 409);
-        }
+    if (!Subscription::exists($actor_profile, $object_profile)) {
+        Subscription::start($actor_profile, $object_profile);
+        ActivityPubReturn::answer(Activitypub_accept::accept_to_array(Activitypub_follow::follow_to_array($data->actor, $data->object)));
+    } else {
+        ActivityPubReturn::error("Already following.", 409);
+    }
 } catch (Exception $e) {
-        ActivityPubReturn::error ("Invalid Object Actor URL.", 404);
+    ActivityPubReturn::error("Invalid Object Actor URL.", 404);
 }

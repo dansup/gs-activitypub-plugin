@@ -25,8 +25,8 @@
  * @license   http://www.fsf.org/licensing/licenses/agpl-3.0.html GNU Affero General Public License version 3.0
  * @link      https://www.gnu.org/software/social/
  */
-if (!defined ('GNUSOCIAL')) {
-        exit (1);
+if (!defined('GNUSOCIAL')) {
+    exit(1);
 }
 
 /**
@@ -43,184 +43,202 @@ if (!defined ('GNUSOCIAL')) {
  */
 class Activitypub_postman
 {
-        private $actor;
-        private $to = array ();
-        private $client;
-        private $headers;
+    private $actor;
+    private $to = [];
+    private $client;
+    private $headers;
 
-        /**
-         * Create a postman to deliver something to someone
-         *
-         * @author Diogo Cordeiro <diogo@fc.up.pt>
-         * @param Profile of sender
-         * @param Activitypub_profile $to array of destinataries
-         */
-        public function __construct ($from, $to = array ())
-        {
-                $this->client = new HTTPClient ();
-                $this->actor = $from;
-                $this->to = $to;
-                $this->headers = array();
-                $this->headers[] = 'Accept: application/ld+json; profile="https://www.w3.org/ns/activitystreams"';
-                $this->headers[] = 'User-Agent: GNUSocialBot v0.1 - https://gnu.io/social';
+    /**
+     * Create a postman to deliver something to someone
+     *
+     * @author Diogo Cordeiro <diogo@fc.up.pt>
+     * @param Profile of sender
+     * @param Activitypub_profile $to array of destinataries
+     */
+    public function __construct($from, $to = [])
+    {
+        $this->client = new HTTPClient();
+        $this->actor = $from;
+        $this->to = $to;
+        $this->headers = [];
+        $this->headers[] = 'Accept: application/ld+json; profile="https://www.w3.org/ns/activitystreams"';
+        $this->headers[] = 'User-Agent: GNUSocialBot v0.1 - https://gnu.io/social';
+    }
+
+    /**
+     * Send a follow notification to remote instance
+     *
+     * @author Diogo Cordeiro <diogo@fc.up.pt>
+     * @throws Exception
+     */
+    public function follow()
+    {
+        $data = Activitypub_follow::follow_to_array($this->actor->getUrl(), $this->to[0]->getUrl());
+        $this->client->setBody(json_encode($data));
+        $res = $this->client->post($this->to[0]->get_inbox(), $this->headers);
+        $res_body = json_decode($res->getBody());
+
+        if ($res->isOk() || $res->getStatus() == 409) {
+            $pending_list = new Activitypub_pending_follow_requests($this->actor->getID(), $this->to[0]->getID());
+            if (! ($res->getStatus() == 409 || $res_body->type == "Accept")) {
+                $pending_list->add();
+                throw new Exception("Your follow request is pending acceptation.");
+            }
+            $pending_list->remove();
+            return true;
+        } elseif (isset($res_body[0]->error)) {
+            throw new Exception($res_body[0]->error);
         }
 
-        /**
-         * Send a follow notification to remote instance
-         *
-         * @author Diogo Cordeiro <diogo@fc.up.pt>
-         */
-        public function follow ()
-        {
-                $data = array ("@context" => "https://www.w3.org/ns/activitystreams",
-                          "type"   => "Follow",
-                          "actor"  => $this->actor->getUrl (),
-                          "object" => $this->to[0]->getUrl ());
-                $this->client->setBody (json_encode ($data));
-                $this->client->post ($this->to[0]->get_inbox (), $this->headers);
-        }
+        throw new Exception("An unknown error occurred.");
+    }
 
-        /**
-         * Send a Undo Follow notification to remote instance
-         *
-         * @author Diogo Cordeiro <diogo@fc.up.pt>
-         */
-        public function undo_follow ()
-        {
-                $data = array ("@context" => "https://www.w3.org/ns/activitystreams",
-                            "type"   => "Undo",
-                            "actor"  => $this->actor->getUrl (),
-                            "object" => array (
-                                "type" => "Follow",
-                                "object" => $this->to[0]->getUrl ()
-                            )
+    /**
+     * Send a Undo Follow notification to remote instance
+     *
+     * @author Diogo Cordeiro <diogo@fc.up.pt>
+     */
+    public function undo_follow()
+    {
+        $data = Activitypub_undo::undo_to_array(
+                         Activitypub_follow::follow_to_array(
+                             $this->actor->getUrl(),
+                                                              $this->to[0]->getUrl()
+                         )
                         );
-                $this->client->setBody (json_encode ($data));
-                $this->client->post ($this->to[0]->get_inbox (), $this->headers);
-        }
+        $this->client->setBody(json_encode($data));
+        $res = $this->client->post($this->to[0]->get_inbox(), $this->headers);
+        $res_body = json_decode($res->getBody());
 
-        /**
-         * Send a Like notification to remote instances holding the notice
-         *
-         * @author Diogo Cordeiro <diogo@fc.up.pt>
-         * @param Notice $notice
-         */
-        public function like ($notice)
-        {
-                $data = array ("@context" => "https://www.w3.org/ns/activitystreams",
-                          "type"   => "Like",
-                          "actor"  => $this->actor->getUrl (),
-                          "object" => $notice->getUri ());
-                $this->client->setBody (json_encode ($data));
-                foreach ($this->to_inbox () as $inbox) {
-                        $this->client->post ($inbox, $this->headers);
-                }
+        if ($res->isOk() || $res->getStatus() == 409) {
+            $pending_list = new Activitypub_pending_follow_requests($this->actor->getID(), $this->to[0]->getID());
+            $pending_list->remove();
+            return true;
         }
+        if (isset($res_body[0]->error)) {
+            throw new Exception($res_body[0]->error);
+        }
+        throw new Exception("An unknown error occurred.");
+    }
 
-        /**
-         * Send a Undo Like notification to remote instances holding the notice
-         *
-         * @author Diogo Cordeiro <diogo@fc.up.pt>
-         * @param Notice $notice
-         */
-        public function undo_like ($notice)
-        {
-                $data = array ("@context" => "https://www.w3.org/ns/activitystreams",
-                            "type"   => "Undo",
-                            "actor"  => $this->actor->getUrl (),
-                            "object" => array (
-                                "type"   => "Like",
-                                "object" => $notice->getUri ()
-                            )
+    /**
+     * Send a Like notification to remote instances holding the notice
+     *
+     * @author Diogo Cordeiro <diogo@fc.up.pt>
+     * @param Notice $notice
+     */
+    public function like($notice)
+    {
+        $data = Activitypub_like::like_to_array(
+                    $this->actor->getUrl(),
+                         Activitypub_notice::notice_to_array($notice)
                         );
-                $this->client->setBody (json_encode ($data));
-                foreach ($this->to_inbox () as $inbox) {
-                        $this->client->post ($inbox, $this->headers);
-                }
+        $this->client->setBody(json_encode($data));
+        foreach ($this->to_inbox() as $inbox) {
+            $this->client->post($inbox, $this->headers);
         }
+    }
 
-        /**
-         * Send a Announce notification to remote instances
-         *
-         * @author Diogo Cordeiro <diogo@fc.up.pt>
-         * @param Notice $notice
-         */
-        public function announce ($notice)
-        {
-                $data = array ("@context" => "https://www.w3.org/ns/activitystreams",
-                               "id"       => $notice->getUri (),
-                               "url"      => $notice->getUrl (),
-                               "type"     => "Announce",
-                               "actor"    => $this->actor->getUrl (),
-                               "to"       => "https://www.w3.org/ns/activitystreams#Public",
-                               "object"   => $notice->getUri ()
-                              );
-                $this->client->setBody (json_encode ($data));
-                foreach ($this->to_inbox () as $inbox) {
-                        $this->client->post ($inbox, $this->headers);
-                }
-        }
-
-        /**
-         * Send a Create notification to remote instances
-         *
-         * @author Diogo Cordeiro <diogo@fc.up.pt>
-         * @param Notice $notice
-         */
-        public function create ($notice)
-        {
-                $data = array ("@context" => "https://www.w3.org/ns/activitystreams",
-                               "id"       => $notice->getUri (),
-                               "type"     => "Create",
-                               "actor"    => $this->actor->getUrl (),
-                               "to"       => "https://www.w3.org/ns/activitystreams#Public",
-                               "object"   => array (
-                                 "type"    => "Note",
-                                 "url"      => $notice->getUrl (),
-                                 "content" => $notice->getContent ()
-                               )
-                              );
-                if (isset ($notice->reply_to)) {
-                        $data["object"]["reply_to"] = $notice->getParent ()->getUri ();
-                }
-                $this->client->setBody (json_encode ($data));
-                foreach ($this->to_inbox () as $inbox) {
-                        $this->client->post ($inbox, $this->headers);
-                }
-        }
-
-        /**
-         * Send a Delete notification to remote instances holding the notice
-         *
-         * @author Diogo Cordeiro <diogo@fc.up.pt>
-         * @param Notice $notice
-         */
-        public function delete ($notice)
-        {
-                $data = array ("@context" => "https://www.w3.org/ns/activitystreams",
-                            "type"   => "Delete",
-                            "actor"  => $this->actor->getUrl (),
-                            "object" => $notice->getUri ()
+    /**
+     * Send a Undo Like notification to remote instances holding the notice
+     *
+     * @author Diogo Cordeiro <diogo@fc.up.pt>
+     * @param Notice $notice
+     */
+    public function undo_like($notice)
+    {
+        $data = Activitypub_undo::undo_to_array(
+                         Activitypub_like::like_to_array(
+                             $this->actor->getUrl(),
+                          Activitypub_notice::notice_to_array($notice)
+                         )
                         );
-                $this->client->setBody (json_encode ($data));
-                foreach ($this->to_inbox () as $inbox) {
-                        $this->client->post ($inbox, $this->headers);
+        $this->client->setBody(json_encode($data));
+        foreach ($this->to_inbox() as $inbox) {
+            $this->client->post($inbox, $this->headers);
+        }
+    }
+
+    /**
+     * Send a Create notification to remote instances
+     *
+     * @author Diogo Cordeiro <diogo@fc.up.pt>
+     * @param Notice $notice
+     */
+    public function create($notice)
+    {
+        $data = Activitypub_create::create_to_array(
+                    $notice->getUri(),
+                                                             $this->actor->getUrl(),
+                                                             Activitypub_notice::notice_to_array($notice)
+                                                            );
+        if (isset($notice->reply_to)) {
+            $data["object"]["reply_to"] = $notice->getParent()->getUri();
+        }
+        $this->client->setBody(json_encode($data));
+        foreach ($this->to_inbox() as $inbox) {
+            $this->client->post($inbox, $this->headers);
+        }
+    }
+
+    /**
+     * Send a Announce notification to remote instances
+     *
+     * @author Diogo Cordeiro <diogo@fc.up.pt>
+     * @param Notice $notice
+     */
+    public function announce($notice)
+    {
+        $data = Activitypub_announce::announce_to_array(
+                         $this->actor->getUrl(),
+                         Activitypub_notice::notice_to_array($notice)
+                        );
+        $this->client->setBody(json_encode($data));
+        foreach ($this->to_inbox() as $inbox) {
+            $this->client->post($inbox, $this->headers);
+        }
+    }
+
+    /**
+     * Send a Delete notification to remote instances holding the notice
+     *
+     * @author Diogo Cordeiro <diogo@fc.up.pt>
+     * @param Notice $notice
+     */
+    public function delete($notice)
+    {
+        $data = Activitypub_delete::delete_to_array(Activitypub_notice::notice_to_array($notice));
+        $this->client->setBody(json_encode($data));
+        $errors = array();
+        foreach ($this->to_inbox() as $inbox) {
+            $res = $this->client->post($inbox, $this->headers);
+            if (!$res->isOk()) {
+                $res_body = json_decode($res->getBody());
+                if (isset($res_body[0]->error)) {
+                    $errors[] = ($res_body[0]->error);
+                    continue;
                 }
+                $errors[] = ("An unknown error occurred.");
+            }
+        }
+        if (!empty($errors)) {
+            throw new Exception(json_encode($errors));
+        }
+    }
+
+    /**
+     * Clean list of inboxes to deliver messages
+     *
+     * @author Diogo Cordeiro <diogo@fc.up.pt>
+     * @return array To Inbox URLs
+     */
+    private function to_inbox()
+    {
+        $to_inboxes = array();
+        foreach ($this->to as $to_profile) {
+            $to_inboxes[] = $to_profile->get_inbox();
         }
 
-        /**
-         * Clean list of inboxes to deliver messages
-         *
-         * @author Diogo Cordeiro <diogo@fc.up.pt>
-         * @return array To Inbox URLs
-         */
-        private function to_inbox ()
-        {
-                $to_inboxes = array ();
-                foreach ($this->to as $to_profile) {
-                        $to_inboxes[] = $to_profile->get_inbox ();
-                }
-
-                return array_unique ($to_inboxes);
-        }
+        return array_unique($to_inboxes);
+    }
 }

@@ -25,13 +25,13 @@
  * @license   http://www.fsf.org/licensing/licenses/agpl-3.0.html GNU Affero General Public License version 3.0
  * @link      https://www.gnu.org/software/social/
  */
-if (!defined ('GNUSOCIAL')) {
-        exit (1);
+if (!defined('GNUSOCIAL')) {
+    exit(1);
 }
 
 try {
-        Notice::getByUri ($data->object)->repeat ($actor_profile, "ActivityPub");
-        ActivityPubReturn::answer ("Notice repeated successfully.");
+    Notice::getByUri($data->object->id)->repeat($actor_profile, "ActivityPub");
+    ActivityPubReturn::answer("Notice repeated successfully.");
 } catch (Exception $e) {
-        ActivityPubReturn::error ($e->getMessage (), 403);
+    ActivityPubReturn::error($e->getMessage(), 403);
 }

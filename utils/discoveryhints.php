@@ -24,12 +24,13 @@
  * @license   http://www.fsf.org/licensing/licenses/agpl-3.0.html GNU Affero General Public License version 3.0
  * @link      https://www.gnu.org/software/social/
  */
-if (!defined ('GNUSOCIAL')) {
-        exit (1);
+if (!defined('GNUSOCIAL')) {
+    exit(1);
 }
 
-class DiscoveryHints {
-    static function fromXRD(XML_XRD $xrd)
+class DiscoveryHints
+{
+    public static function fromXRD(XML_XRD $xrd)
     {
         $hints = array();
 
@@ -60,7 +61,7 @@ class DiscoveryHints {
         return $hints;
     }
 
-    static function fromHcardUrl($url)
+    public static function fromHcardUrl($url)
     {
         $client = new HTTPClient();
         $client->setHeader('Accept', 'text/html,application/xhtml+xml');
@@ -76,11 +77,13 @@ class DiscoveryHints {
             return null;
         }
 
-        return self::hcardHints($response->getBody(),
-                                $response->getEffectiveUrl());
+        return self::hcardHints(
+            $response->getBody(),
+                                $response->getEffectiveUrl()
+        );
     }
 
-    static function hcardHints($body, $url)
+    public static function hcardHints($body, $url)
     {
         $hcard = self::_hcard($body, $url);
 
@@ -119,7 +122,7 @@ class DiscoveryHints {
         return $hints;
     }
 
-    static function _hcard($body, $url)
+    public static function _hcard($body, $url)
     {
         $mf2 = new Mf2\Parser($body, $url);
         $mf2 = $mf2->parse();

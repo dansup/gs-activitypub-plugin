@@ -30,7 +30,7 @@ if (!defined('GNUSOCIAL')) {
 }
 
 /**
- * ActivityPub Attachment representation
+ * ActivityPub error representation
  *
  * @category  Plugin
  * @package   GNUsocial
@@ -38,40 +38,22 @@ if (!defined('GNUSOCIAL')) {
  * @license   http://www.fsf.org/licensing/licenses/agpl-3.0.html GNU Affero General Public License version 3.0
  * @link      http://www.gnu.org/software/social/
  */
-class Activitypub_attachment extends Managed_DataObject
+class Activitypub_announce extends Managed_DataObject
 {
     /**
-     * Generates a pretty array from an Attachment object
+     * Generates an ActivityPub representation of a Announce
      *
      * @author Diogo Cordeiro <diogo@fc.up.pt>
-     * @param Attachment $attachment
+     * @param array $object
      * @return pretty array to be used in a response
      */
-    public static function attachment_to_array($attachment)
+    public static function announce_to_array($actor, $object)
     {
-        $res = [
-                        '@context'  => [
-                                "https://www.w3.org/ns/activitystreams",
-                                [
-                                        "@language" => "en"
-                                ]
-                        ],
-                        'id'       => $attachment->getID(),
-                        'mimetype' => $attachment->mimetype,
-                        'url'      => $attachment->getUrl(),
-                        'size'     => intval($attachment->size), // $attachment->getSize ()
-                        'title'    => $attachment->getTitle(),
-                        'meta'     => null
-                ];
-
-        // Image
-        if (substr($res["mimetype"], 0, 5) == "image") {
-            $res["meta"]= [
-                                'width'  => $attachment->width,
-                                'height' => $attachment->height
-                        ];
-        }
-
+        $res = array("@context" => "https://www.w3.org/ns/activitystreams",
+                          "type"   => "Announce",
+                          "actor"  => $actor,
+                          "object" => $object
+                       );
         return $res;
     }
 }

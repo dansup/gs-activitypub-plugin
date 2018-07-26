@@ -25,17 +25,17 @@
  * @license   http://www.fsf.org/licensing/licenses/agpl-3.0.html GNU Affero General Public License version 3.0
  * @link      https://www.gnu.org/software/social/
  */
-if (!defined ('GNUSOCIAL')) {
-        exit (1);
+if (!defined('GNUSOCIAL')) {
+    exit(1);
+}
+
+if (!isset($data->object->id)) {
+    ActivityPubReturn::error("Id not specified.");
 }
 
 try {
-        Fave::addNew ($actor_profile, Notice::getByUri ($data->object));
-        $res = array ("@context" => "https://www.w3.org/ns/activitystreams",
-                  "type"   => "Like",
-                  "actor"  => $data->actor,
-                  "object" => $data->object);
-        ActivityPubReturn::answer ($res);
+    Fave::addNew($actor_profile, Notice::getByUri($data->object->id));
+    ActivityPubReturn::answer(Activitypub_like::like_to_array(Activitypub_notice::notice_to_array($data->actor, json_decode($data->object))));
 } catch (Exception $e) {
-        ActivityPubReturn::error ($e->getMessage (), 403);
+    ActivityPubReturn::error($e->getMessage(), 403);
 }

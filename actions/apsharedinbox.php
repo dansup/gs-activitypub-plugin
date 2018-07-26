@@ -25,8 +25,8 @@
  * @license   http://www.fsf.org/licensing/licenses/agpl-3.0.html GNU Affero General Public License version 3.0
  * @link      https://www.gnu.org/software/social/
  */
-if (!defined ('GNUSOCIAL')) {
-        exit (1);
+if (!defined('GNUSOCIAL')) {
+    exit(1);
 }
 
 /**
@@ -40,80 +40,55 @@ if (!defined ('GNUSOCIAL')) {
  */
 class apSharedInboxAction extends ManagedAction
 {
-        protected $needLogin = false;
-        protected $canPost   = true;
+    protected $needLogin = false;
+    protected $canPost   = true;
 
-        /**
-         * Handle the Shared Inbox request
-         *
-         * @author Diogo Cordeiro <diogo@fc.up.pt>
-         * @return void
-         */
-        protected function handle ()
-        {
-                if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-                        ActivityPubReturn::error ("Only POST requests allowed.");
-                }
+    /**
+     * Handle the Shared Inbox request
+     *
+     * @author Diogo Cordeiro <diogo@fc.up.pt>
+     * @return void
+     */
+    protected function handle()
+    {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            ActivityPubReturn::error("Only POST requests allowed.");
+        }
 
-                $data = json_decode (file_get_contents ('php://input'));
+        $data = json_decode(file_get_contents('php://input'));
 
-                // Validate data
-                if (!isset ($data->type)) {
-                        ActivityPubReturn::error ("Type was not specified.");
-                }
-                if (!isset ($data->actor)) {
-                        ActivityPubReturn::error ("Actor was not specified.");
-                }
-                if (!isset ($data->object)) {
-                        ActivityPubReturn::error ("Object was not specified.");
-                }
+        // Validate data
+        if (!isset($data->type)) {
+            ActivityPubReturn::error("Type was not specified.");
+        }
+        if (!isset($data->actor)) {
+            ActivityPubReturn::error("Actor was not specified.");
+        }
+        if (!isset($data->object)) {
+            ActivityPubReturn::error("Object was not specified.");
+        }
 
-                $discovery = new Activitypub_explorer;
+        $discovery = new Activitypub_explorer;
+        // Get valid Actor object
+        try {
+            $actor_profile = $discovery->lookup($data->actor);
+            $actor_profile = $actor_profile[0];
+        } catch (Exception $e) {
+            ActivityPubReturn::error("Invalid Actor.", 404);
+        }
+        unset($discovery);
 
-                // Get valid Actor object
-                try {
-                        $actor_profile = $discovery->lookup ($data->actor);
-                        $actor_profile = $actor_profile[0];
-                } catch (Exception $e) {
-                        ActivityPubReturn::error ("Invalid Actor.", 404);
-                }
+        // Public To:
+        $public_to = ["https://www.w3.org/ns/activitystreams#Public",
+                      "Public",
+                      "as:Public"
+                     ];
 
-                unset ($discovery);
+        $to_profiles = "https://www.w3.org/ns/activitystreams#Public";
 
-                // Public To:
-                $public_to = array ("https://www.w3.org/ns/activitystreams#Public",
-                                    "Public",
-                                    "as:Public");
-
-                // Process request
-                switch ($data->type) {
+        // Process request
+        switch ($data->type) {
                         case "Create":
-                                if (!isset($data->to)) {
-                                        ActivityPubReturn::error ("To was not specified.");
-                                }
-                                $discovery = new Activitypub_explorer;
-                                $to_profiles = array ();
-                                // Generate To objects
-                                if (is_array ($data->to)) {
-                                        // Remove duplicates from To actors set
-                                        array_unique ($data->to);
-                                        foreach ($data->to as $to_url) {
-                                                try {
-                                                        $to_profiles = array_merge ($to_profiles, $discovery->lookup ($to_url));
-                                                } catch (Exception $e) {
-                                                        // XXX: Invalid actor found, not sure how we handle those
-                                                }
-                                        }
-                                } else if (empty ($data->to) || in_array ($data->to, $public_to)) {
-                                        // No need to do anything else at this point, let's just break out the if
-                                } else {
-                                        try {
-                                                $to_profiles[]= $discovery->lookup ($data->to);
-                                        } catch (Exception $e) {
-                                                ActivityPubReturn::error ("Invalid Actor.", 404);
-                                        }
-                                }
-                                unset ($discovery);
                                 require_once __DIR__ . DIRECTORY_SEPARATOR . "inbox" . DIRECTORY_SEPARATOR . "Create.php";
                                 break;
                         case "Follow":
@@ -131,8 +106,14 @@ class apSharedInboxAction extends ManagedAction
                         case "Delete":
                                 require_once __DIR__ . DIRECTORY_SEPARATOR . "inbox" . DIRECTORY_SEPARATOR . "Delete.php";
                                 break;
+                        case "Accept":
+                                require_once __DIR__ . DIRECTORY_SEPARATOR . "inbox" . DIRECTORY_SEPARATOR . "Accept.php";
+                                break;
+                        case "Reject":
+                                require_once __DIR__ . DIRECTORY_SEPARATOR . "inbox" . DIRECTORY_SEPARATOR . "Reject.php";
+                                break;
                         default:
-                                ActivityPubReturn::error ("Invalid type value.");
+                                ActivityPubReturn::error("Invalid type value.");
                 }
     }
 }

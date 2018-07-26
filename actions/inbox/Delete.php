@@ -25,17 +25,15 @@
  * @license   http://www.fsf.org/licensing/licenses/agpl-3.0.html GNU Affero General Public License version 3.0
  * @link      https://www.gnu.org/software/social/
  */
-if (!defined ('GNUSOCIAL')) {
-        exit (1);
+if (!defined('GNUSOCIAL')) {
+    exit(1);
 }
 
 try {
-        Notice::getByUri ($data->object)->deleteAs ($actor_profile);
-        $res = array ("@context" => "https://www.w3.org/ns/activitystreams",
-                  "type"   => "Delete",
-                  "actor"  => $data->actor,
-                  "object" => $data->object);
-        ActivityPubReturn::answer ($res);
+    $notice = Notice::getByUri($data->object->id);
+    $notice_to_array = Activitypub_notice::notice_to_array($notice);
+    $notice->deleteAs($actor_profile);
+    ActivityPubReturn::answer(Activitypub_delete::delete_to_array($notice_to_array));
 } catch (Exception $e) {
-        ActivityPubReturn::error ($e->getMessage (), 403);
+    ActivityPubReturn::error($e->getMessage(), 403);
 }

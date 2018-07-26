@@ -6,11 +6,10 @@ email, or any other method with the owners of this repository before making a ch
 Please note we have a code of conduct, please follow it in all your interactions with the project.
 
 # Coding Style
-- We are using [K&R Variant: Linux kernel](https://en.wikipedia.org/wiki/Indentation_style#Variant:_Linux_kernel) with spaces before every `(`.
-- Every function has a docblock explaining what it does and stating the author, parameters, types, return and exceptions
-- We use snake_case
+- We follow every [PSR-2](https://www.php-fig.org/psr/psr-2/) ...
+- ... except camelCase, that's too bad, we use snake_case
 
-## Pull Request Process
+## Merge Request Process
 
 1. Ensure you strip any trailing spaces off
 2. Increase the version numbers in any examples files and the README.md to the new version that this

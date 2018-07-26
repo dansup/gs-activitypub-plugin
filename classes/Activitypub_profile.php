@@ -25,8 +25,8 @@
  * @license   http://www.fsf.org/licensing/licenses/agpl-3.0.html GNU Affero General Public License version 3.0
  * @link      https://www.gnu.org/software/social/
  */
-if (!defined ('GNUSOCIAL')) {
-        exit (1);
+if (!defined('GNUSOCIAL')) {
+    exit(1);
 }
 
 /**
@@ -35,331 +35,337 @@ if (!defined ('GNUSOCIAL')) {
  * @category  Plugin
  * @package   GNUsocial
  * @author    Diogo Cordeiro <diogo@fc.up.pt>
- * @author    Daniel Supernault <danielsupernault@gmail.com>
  * @license   http://www.fsf.org/licensing/licenses/agpl-3.0.html GNU Affero General Public License version 3.0
  * @link      http://www.gnu.org/software/social/
  */
 class Activitypub_profile extends Profile
 {
-        public $__table = 'Activitypub_profile';
+    public $__table = 'Activitypub_profile';
 
-        protected $_profile = null;
+    protected $_profile = null;
 
-        /**
-         * Return table definition for Schema setup and DB_DataObject usage.
-         *
-         * @author Diogo Cordeiro <diogo@fc.up.pt>
-         * @return array array of column definitions
-         */
-        static function schemaDef ()
-        {
-            return array (
-                'fields' => array (
-                    'uri' => array ('type' => 'varchar', 'length' => 191, 'not null' => true),
-                    'profile_id' => array ('type' => 'integer'),
-                    'inboxuri' => array ('type' => 'varchar', 'length' => 191),
-                    'sharedInboxuri' => array ('type' => 'varchar', 'length' => 191),
-                    'created' => array ('type' => 'datetime', 'not null' => true),
-                    'modified' => array ('type' => 'datetime', 'not null' => true),
+    /**
+     * Return table definition for Schema setup and DB_DataObject usage.
+     *
+     * @author Diogo Cordeiro <diogo@fc.up.pt>
+     * @return array array of column definitions
+     */
+    public static function schemaDef()
+    {
+        return array(
+                'fields' => array(
+                    'uri' => array('type' => 'varchar', 'length' => 191, 'not null' => true),
+                    'profile_id' => array('type' => 'integer'),
+                    'inboxuri' => array('type' => 'varchar', 'length' => 191),
+                    'sharedInboxuri' => array('type' => 'varchar', 'length' => 191),
+                    'created' => array('type' => 'datetime', 'not null' => true),
+                    'modified' => array('type' => 'datetime', 'not null' => true),
                 ),
-                'primary key' => array ('uri'),
-                'unique keys' => array (
-                    'Activitypub_profile_profile_id_key' => array ('profile_id'),
-                    'Activitypub_profile_inboxuri_key' => array ('inboxuri'),
+                'primary key' => array('uri'),
+                'unique keys' => array(
+                    'Activitypub_profile_profile_id_key' => array('profile_id'),
+                    'Activitypub_profile_inboxuri_key' => array('inboxuri'),
                 ),
-                'foreign keys' => array (
-                    'Activitypub_profile_profile_id_fkey' => array ('profile', array ('profile_id' => 'id')),
+                'foreign keys' => array(
+                    'Activitypub_profile_profile_id_fkey' => array('profile', array('profile_id' => 'id')),
                 ),
             );
-        }
+    }
 
-        /**
-         * Generates a pretty profile from a Profile object
-         *
-         * @author Diogo Cordeiro <diogo@fc.up.pt>
-         * @param Profile $profile
-         * @return pretty array to be used in a response
-         */
-        public static function profile_to_array ($profile)
-        {
-                $url = $profile->getURL ();
-                $res = [
+    /**
+     * Generates a pretty profile from a Profile object
+     *
+     * @author Diogo Cordeiro <diogo@fc.up.pt>
+     * @param Profile $profile
+     * @return pretty array to be used in a response
+     */
+    public static function profile_to_array($profile)
+    {
+        $uri = ActivityPubPlugin::actor_uri($profile);
+        $id = $profile->getID();
+        $res = [
                         '@context'        => [
                                 "https://www.w3.org/ns/activitystreams",
                                 [
                                         "@language"   => "en"
                                 ]
                         ],
-                        'id'              => $profile->getID (),
-                        'type'            => 'Person',
-                        'nickname'        => $profile->getNickname (),
-                        'is_local'        => $profile->isLocal (),
-                        'inbox'           => "{$url}/inbox.json",
-                        'sharedInbox'     => common_root_url ()."inbox.json",
-                        'outbox'          => "{$url}/outbox.json",
-                        'display_name'    => $profile->getFullname (),
-                        'followers'       => "{$url}/followers.json",
-                        'followers_count' => $profile->subscriberCount (),
-                        'following'       => "{$url}/following.json",
-                        'following_count' => $profile->subscriptionCount (),
-                        'liked'           => "{$url}/liked.json",
-                        'liked_count'     => Fave::countByProfile ($profile),
-                        'summary'         => ($desc = $profile->getDescription ()) == null ? "" : $desc,
-                        'url'             => $profile->getURL (),
-                        'avatar'          => [
+                        'id'                => $uri,
+                        'type'              => 'Person',
+                        'preferredUsername' => $profile->getNickname(),
+                        'is_local'          => $profile->isLocal(),
+                        'inbox'             => common_local_url("apActorInbox", array("id" => $id)),
+                        'name'              => $profile->getFullname(),
+                        'followers'         => common_local_url("apActorFollowers", array("id" => $id)),
+                        'followers_count'   => $profile->subscriberCount(),
+                        'following'         => common_local_url("apActorFollowing", array("id" => $id)),
+                        'following_count'   => $profile->subscriptionCount(),
+                        'liked'             => common_local_url("apActorLiked", array("id" => $id)),
+                        'liked_count'       => Fave::countByProfile($profile),
+                        'summary'           => ($desc = $profile->getDescription()) == null ? "" : $desc,
+                        'icon'              => [
                                 'type'   => 'Image',
-                                'width'  => 96,
-                                'height' => 96,
-                                'url'    => $profile->avatarUrl (AVATAR_PROFILE_SIZE)
+                                'width'  => AVATAR_PROFILE_SIZE,
+                                'height' => AVATAR_PROFILE_SIZE,
+                                'url'    => $profile->avatarUrl(AVATAR_PROFILE_SIZE)
                         ]
                 ];
-                return $res;
+
+        if ($profile->isLocal()) {
+            $res["sharedInbox"] = common_local_url("apSharedInbox", array("id" => $id));
+        } else {
+            $aprofile = new Activitypub_profile();
+            $aprofile = $aprofile->from_profile($profile);
+            $res["sharedInbox"] = $aprofile->sharedInboxuri;
         }
 
-        /**
-         * Insert the current objects variables into the database
-         *
-         * @author Diogo Cordeiro <diogo@fc.up.pt>
-         * @access public
-         * @throws ServerException
-         */
-        public function do_insert ()
-        {
-                $profile = new Profile ();
+        return $res;
+    }
 
-                $profile->created = $this->created = $this->modified = common_sql_now ();
+    /**
+     * Insert the current objects variables into the database
+     *
+     * @author Diogo Cordeiro <diogo@fc.up.pt>
+     * @access public
+     * @throws ServerException
+     */
+    public function do_insert()
+    {
+        $profile = new Profile();
 
-                $fields = array (
-                            'uri'      => 'profileurl',
-                            'nickname' => 'nickname',
-                            'fullname' => 'fullname',
-                            'bio'      => 'bio'
-                            );
+        $profile->created = $this->created = $this->modified = common_sql_now();
 
-                foreach ($fields as $af => $pf) {
-                        $profile->$pf = $this->$af;
-                }
+        $fields = [
+                    'uri'      => 'profileurl',
+                    'nickname' => 'nickname',
+                    'fullname' => 'fullname',
+                    'bio'      => 'bio'
+                    ];
 
-                $this->profile_id = $profile->insert ();
-                if ($this->profile_id === false) {
-                        $profile->query ('ROLLBACK');
-                        throw new ServerException ('Profile insertion failed.');
-                }
-
-                $ok = $this->insert ();
-
-                if ($ok === false) {
-                        $profile->query ('ROLLBACK');
-                        throw new ServerException ('Cannot save ActivityPub profile.');
-                }
+        foreach ($fields as $af => $pf) {
+            $profile->$pf = $this->$af;
         }
 
-        /**
-         * Fetch the locally stored profile for this Activitypub_profile
-         *
-         * @author Diogo Cordeiro <diogo@fc.up.pt>
-         * @return Profile
-         * @throws NoProfileException if it was not found
-         */
-        public function local_profile ()
-        {
-                $profile = Profile::getKV ('id', $this->profile_id);
-                if (!$profile instanceof Profile) {
-                        throw new NoProfileException ($this->profile_id);
-                }
-                return $profile;
+        $this->profile_id = $profile->insert();
+        if ($this->profile_id === false) {
+            $profile->query('ROLLBACK');
+            throw new ServerException('Profile insertion failed.');
         }
 
-        /**
-         * Generates an Activitypub_profile from a Profile
-         *
-         * @author Diogo Cordeiro <diogo@fc.up.pt>
-         * @param Profile $profile
-         * @return Activitypub_profile
-         * @throws Exception if no Activitypub_profile exists for given Profile
-         */
-        static function from_profile (Profile $profile)
-        {
-                $profile_id = $profile->getID ();
+        $ok = $this->insert();
 
-                $aprofile = self::getKV ('profile_id', $profile_id);
-                if (!$aprofile instanceof Activitypub_profile) {
-                        // No Activitypub_profile for this profile_id,
-                        if (!$profile->isLocal ()) {
-                                // create one!
-                                $aprofile = self::create_from_local_profile ($profile);
-                        } else {
-                                throw new Exception ('No Activitypub_profile for Profile ID: '.$profile_id. ', this is a local user.');
-                        }
-                }
+        if ($ok === false) {
+            $profile->query('ROLLBACK');
+            throw new ServerException('Cannot save ActivityPub profile.');
+        }
+    }
 
-                foreach ($profile as $key => $value) {
-                        $aprofile->$key = $value;
-                }
+    /**
+     * Fetch the locally stored profile for this Activitypub_profile
+     *
+     * @author Diogo Cordeiro <diogo@fc.up.pt>
+     * @return Profile
+     * @throws NoProfileException if it was not found
+     */
+    public function local_profile()
+    {
+        $profile = Profile::getKV('id', $this->profile_id);
+        if (!$profile instanceof Profile) {
+            throw new NoProfileException($this->profile_id);
+        }
+        return $profile;
+    }
 
-                return $aprofile;
+    /**
+     * Generates an Activitypub_profile from a Profile
+     *
+     * @author Diogo Cordeiro <diogo@fc.up.pt>
+     * @param Profile $profile
+     * @return Activitypub_profile
+     * @throws Exception if no Activitypub_profile exists for given Profile
+     */
+    public static function from_profile(Profile $profile)
+    {
+        $profile_id = $profile->getID();
+
+        $aprofile = self::getKV('profile_id', $profile_id);
+        if (!$aprofile instanceof Activitypub_profile) {
+            // No Activitypub_profile for this profile_id,
+            if (!$profile->isLocal()) {
+                // create one!
+                $aprofile = self::create_from_local_profile($profile);
+            } else {
+                throw new Exception('No Activitypub_profile for Profile ID: '.$profile_id. ', this is a local user.');
+            }
         }
 
-        /**
-         * Given an existent local profile creates an ActivityPub profile.
-         * One must be careful not to give a user profile to this function
-         * as only remote users have ActivityPub_profiles on local instance
-         *
-         * @author Diogo Cordeiro <diogo@fc.up.pt>
-         * @param Profile $profile
-         * @return Activitypub_profile
-         */
-        private static function create_from_local_profile (Profile $profile)
-        {
-                $url = $profile->getURL ();
-                $inboxes = Activitypub_explorer::get_actor_inboxes_uri ($url);
-
-                $aprofile->created = $aprofile->modified = common_sql_now ();
-
-                $aprofile                 = new Activitypub_profile;
-                $aprofile->profile_id     = $profile->getID ();
-                $aprofile->uri            = $url;
-                $aprofile->nickname       = $profile->getNickname ();
-                $aprofile->fullname       = $profile->getFullname ();
-                $aprofile->bio            = substr ($profile->getDescription (), 0, 1000);
-                $aprofile->inboxuri       = $inboxes["inbox"];
-                $aprofile->sharedInboxuri = $inboxes["sharedInbox"];
-
-                $aprofile->insert ();
-
-                return $aprofile;
+        foreach ($profile as $key => $value) {
+            $aprofile->$key = $value;
         }
 
-        /**
-         * Returns sharedInbox if possible, inbox otherwise
-         *
-         * @author Diogo Cordeiro <diogo@fc.up.pt>
-         * @return string Inbox URL
-         */
-        public function get_inbox ()
-        {
-                if (is_null ($this->sharedInboxuri)) {
-                        return $this->inboxuri;
-                }
+        return $aprofile;
+    }
 
-                return $this->sharedInboxuri;
+    /**
+     * Given an existent local profile creates an ActivityPub profile.
+     * One must be careful not to give a user profile to this function
+     * as only remote users have ActivityPub_profiles on local instance
+     *
+     * @author Diogo Cordeiro <diogo@fc.up.pt>
+     * @param Profile $profile
+     * @return Activitypub_profile
+     */
+    private static function create_from_local_profile(Profile $profile)
+    {
+        $url = $profile->getURL();
+        $inboxes = Activitypub_explorer::get_actor_inboxes_uri($url);
+
+        $aprofile->created = $aprofile->modified = common_sql_now();
+
+        $aprofile                 = new Activitypub_profile;
+        $aprofile->profile_id     = $profile->getID();
+        $aprofile->uri            = $url;
+        $aprofile->nickname       = $profile->getNickname();
+        $aprofile->fullname       = $profile->getFullname();
+        $aprofile->bio            = substr($profile->getDescription(), 0, 1000);
+        $aprofile->inboxuri       = $inboxes["inbox"];
+        $aprofile->sharedInboxuri = $inboxes["sharedInbox"];
+
+        $aprofile->insert();
+
+        return $aprofile;
+    }
+
+    /**
+     * Returns sharedInbox if possible, inbox otherwise
+     *
+     * @author Diogo Cordeiro <diogo@fc.up.pt>
+     * @return string Inbox URL
+     */
+    public function get_inbox()
+    {
+        if (is_null($this->sharedInboxuri)) {
+            return $this->inboxuri;
         }
 
-        /**
-         * Getter for uri property
-         *
-         * @author Diogo Cordeiro <diogo@fc.up.pt>
-         * @return string URI
-         */
-        public function get_uri ()
-        {
-                return $this->uri;
+        return $this->sharedInboxuri;
+    }
+
+    /**
+     * Getter for uri property
+     *
+     * @author Diogo Cordeiro <diogo@fc.up.pt>
+     * @return string URI
+     */
+    public function get_uri()
+    {
+        return $this->uri;
+    }
+
+    /**
+     * Ensures a valid Activitypub_profile when provided with a valid URI.
+     *
+     * @author Diogo Cordeiro <diogo@fc.up.pt>
+     * @param string $url
+     * @return Activitypub_profile
+     * @throws Exception if it isn't possible to return an Activitypub_profile
+     */
+    public static function get_from_uri($url)
+    {
+        $explorer = new Activitypub_explorer();
+        $profiles_found = $explorer->lookup($url);
+        if (!empty($profiles_found)) {
+            return self::from_profile($profiles_found[0]);
+        } else {
+            throw new Exception('No valid ActivityPub profile found for given URI.');
+        }
+    }
+
+    /**
+     * Look up, and if necessary create, an Activitypub_profile for the remote
+     * entity with the given webfinger address.
+     * This should never return null -- you will either get an object or
+     * an exception will be thrown.
+     *
+     * @author GNU Social
+     * @author Diogo Cordeiro <diogo@fc.up.pt>
+     * @param string $addr webfinger address
+     * @return Activitypub_profile
+     * @throws Exception on error conditions
+     */
+    public static function ensure_web_finger($addr)
+    {
+        // Normalize $addr, i.e. add 'acct:' if missing
+        $addr = Discovery::normalize($addr);
+
+        // Try the cache
+        $uri = self::cacheGet(sprintf('activitypub_profile:webfinger:%s', $addr));
+
+        if ($uri !== false) {
+            if (is_null($uri)) {
+                // Negative cache entry
+                // TRANS: Exception.
+                throw new Exception(_m('Not a valid webfinger address (via cache).'));
+            }
+            try {
+                return self::get_from_uri($uri);
+            } catch (Exception $e) {
+                common_log(LOG_ERR, sprintf(__METHOD__ . ': Webfinger address cache inconsistent with database, did not find Activitypub_profile uri==%s', $uri));
+                self::cacheSet(sprintf('activitypub_profile:webfinger:%s', $addr), false);
+            }
         }
 
-        /**
-         * Ensures a valid Activitypub_profile when provided with a valid URI.
-         *
-         * @author Diogo Cordeiro <diogo@fc.up.pt>
-         * @param string $url
-         * @return Activitypub_profile
-         * @throws Exception if it isn't possible to return an Activitypub_profile
-         */
-        public static function get_from_uri ($url)
-        {
-                $explorer = new Activitypub_explorer ();
-                $profiles_found = $explorer->lookup ($url);
-                if (!empty ($profiles_found)) {
-                        return self::from_profile ($profiles_found[0]);
-                } else {
-                        throw new Exception ('No valid ActivityPub profile found for given URI');
-                }
-                // If it doesn't return a valid Activitypub_profile an exception will
-                // have been thrown before getting to this point.
+        // Now, try some discovery
+
+        $disco = new Discovery();
+
+        try {
+            $xrd = $disco->lookup($addr);
+        } catch (Exception $e) {
+            // Save negative cache entry so we don't waste time looking it up again.
+            // @todo FIXME: Distinguish temporary failures?
+            self::cacheSet(sprintf('activitypub_profile:webfinger:%s', $addr), null);
+            // TRANS: Exception.
+            throw new Exception(_m('Not a valid webfinger address.'));
         }
 
-        /**
-         * Look up, and if necessary create, an Activitypub_profile for the remote
-         * entity with the given webfinger address.
-         * This should never return null -- you will either get an object or
-         * an exception will be thrown.
-         *
-         * @author GNU Social
-         * @author Diogo Cordeiro <diogo@fc.up.pt>
-         * @param string $addr webfinger address
-         * @return Activitypub_profile
-         * @throws Exception on error conditions
-         */
-        public static function ensure_web_finger ($addr)
-        {
-                // Normalize $addr, i.e. add 'acct:' if missing
-                $addr = Discovery::normalize ($addr);
+        $hints = array_merge(
+                    array('webfinger' => $addr),
+                DiscoveryHints::fromXRD($xrd)
+                );
 
-                // Try the cache
-                $uri = self::cacheGet (sprintf ('activitypub_profile:webfinger:%s', $addr));
-
-                if ($uri !== false) {
-                        if (is_null ($uri)) {
-                                // Negative cache entry
-                                // TRANS: Exception.
-                                throw new Exception (_m ('Not a valid webfinger address (via cache).'));
-                        }
-                        try {
-                                return self::get_from_uri ($uri);
-                        } catch (Exception $e) {
-                            common_log (LOG_ERR, sprintf (__METHOD__ . ': Webfinger address cache inconsistent with database, did not find Activitypub_profile uri==%s', $uri));
-                            self::cacheSet (sprintf ('activitypub_profile:webfinger:%s', $addr), false);
-                        }
-                }
-
-                // Now, try some discovery
-
-                $disco = new Discovery ();
-
-                try {
-                        $xrd = $disco->lookup ($addr);
-                } catch (Exception $e) {
-                        // Save negative cache entry so we don't waste time looking it up again.
-                        // @todo FIXME: Distinguish temporary failures?
-                        self::cacheSet (sprintf ('activitypub_profile:webfinger:%s', $addr), null);
-                        // TRANS: Exception.
-                        throw new Exception (_m ('Not a valid webfinger address.'));
-                }
-
-                $hints = array_merge (array ('webfinger' => $addr),
-                DiscoveryHints::fromXRD ($xrd));
-
-                // If there's an Hcard, let's grab its info
-                if (array_key_exists ('hcard', $hints)) {
-                        if (!array_key_exists ('profileurl', $hints) ||
+        // If there's an Hcard, let's grab its info
+        if (array_key_exists('hcard', $hints)) {
+            if (!array_key_exists('profileurl', $hints) ||
                         $hints['hcard'] != $hints['profileurl']) {
-                                $hcardHints = DiscoveryHints::fromHcardUrl ($hints['hcard']);
-                                $hints = array_merge ($hcardHints, $hints);
-                        }
-                }
+                $hcardHints = DiscoveryHints::fromHcardUrl($hints['hcard']);
+                $hints = array_merge($hcardHints, $hints);
+            }
+        }
 
-                // If we got a profile page, try that!
-                $profileUrl = null;
-                if (array_key_exists ('profileurl', $hints)) {
-                        $profileUrl = $hints['profileurl'];
-                        try {
-                                common_log (LOG_INFO, "Discovery on acct:$addr with profile URL $profileUrl");
-                                $aprofile = self::get_from_uri ($hints['profileurl']);
-                                self::cacheSet (sprintf ('activitypub_profile:webfinger:%s', $addr), $aprofile->get_uri ());
-                                return $aprofile;
-                        } catch (Exception $e) {
-                                common_log (LOG_WARNING, "Failed creating profile from profile URL '$profileUrl': " . $e->getMessage ());
-                                // keep looking
+        // If we got a profile page, try that!
+        $profileUrl = null;
+        if (array_key_exists('profileurl', $hints)) {
+            $profileUrl = $hints['profileurl'];
+            try {
+                common_log(LOG_INFO, "Discovery on acct:$addr with profile URL $profileUrl");
+                $aprofile = self::get_from_uri($hints['profileurl']);
+                self::cacheSet(sprintf('activitypub_profile:webfinger:%s', $addr), $aprofile->get_uri());
+                return $aprofile;
+            } catch (Exception $e) {
+                common_log(LOG_WARNING, "Failed creating profile from profile URL '$profileUrl': " . $e->getMessage());
+                // keep looking
                                 //
                                 // @todo FIXME: This means an error discovering from profile page
                                 // may give us a corrupt entry using the webfinger URI, which
                                 // will obscure the correct page-keyed profile later on.
-                        }
-                }
-
-                // XXX: try hcard
-                // XXX: try FOAF
-
-                // TRANS: Exception. %s is a webfinger address.
-                throw new Exception (sprintf (_m ('Could not find a valid profile for "%s".'), $addr));
+            }
         }
+
+        // XXX: try hcard
+        // XXX: try FOAF
+
+        // TRANS: Exception. %s is a webfinger address.
+        throw new Exception(sprintf(_m('Could not find a valid profile for "%s".'), $addr));
+    }
 }

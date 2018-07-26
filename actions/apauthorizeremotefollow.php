@@ -30,7 +30,7 @@ if (!defined('GNUSOCIAL')) {
 }
 
 /**
- * Actor's profile (Local users only)
+ * Authorize Remote Follow
  *
  * @category  Plugin
  * @package   GNUsocial
@@ -38,40 +38,55 @@ if (!defined('GNUSOCIAL')) {
  * @license   http://www.fsf.org/licensing/licenses/agpl-3.0.html GNU Affero General Public License version 3.0
  * @link      http://www.gnu.org/software/social/
  */
-class apActorProfileAction extends ManagedAction
+class apAuthorizeRemoteFollowAction extends Action
 {
-    protected $needLogin = false;
-    protected $canPost   = true;
-
     /**
-     * Handle the Actor Profile request
+     * Prepare to handle the Authorize Remote Follow request.
      *
      * @author Diogo Cordeiro <diogo@fc.up.pt>
-     * @return void
+     * @param array $args
+     * @return boolean
+     */
+    protected function prepare(array $args=array())
+    {
+        parent::prepare($args);
+
+        if (!common_logged_in()) {
+            // XXX: selfURL() didn't work. :<
+            common_set_returnto($_SERVER['REQUEST_URI']);
+            if (Event::handle('RedirectToLogin', array($this, null))) {
+                common_redirect(common_local_url('login'), 303);
+            }
+            return false;
+        } else {
+            if (!isset($_GET["acct"])) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * Handle the Authorize Remote Follow Request.
+     *
+     * @author Diogo Cordeiro <diogo@fc.up.pt>
      */
     protected function handle()
     {
-        if (!empty($id = $this->trimmed('id'))) {
-            try {
-                $profile = Profile::getByID($id);
-            } catch (Exception $e) {
-                ActivityPubReturn::error('Invalid Actor URI.', 404);
-            }
-            unset($id);
-        } else {
-            try {
-                $profile = User::getByNickname($this->trimmed('nickname'))->getProfile();
-            } catch (Exception $e) {
-                ActivityPubReturn::error('Invalid username.', 404);
-            }
+        $other = Activitypub_profile::get_from_uri($_GET["acct"]);
+        $actor_profile = common_current_user()->getProfile();
+        $object_profile = $other->local_profile();
+        if (!Subscription::exists($actor_profile, $object_profile)) {
+            Subscription::start($actor_profile, $object_profile);
         }
-
-        if (!$profile->isLocal()) {
-            ActivityPubReturn::error("This is not a local user.");
+        try {
+            $postman = new Activitypub_postman($actor_profile, [$other]);
+            $postman->follow();
+        } catch (Exception $e) {
+            // Meh, let the exception go on its merry way, it shouldn't be all
+            // that important really.
         }
-
-        $res = Activitypub_profile::profile_to_array($profile);
-
-        ActivityPubReturn::answer($res);
+        common_redirect(common_local_url('userbyid', array('id' => $other->profile_id)), 303);
     }
 }
