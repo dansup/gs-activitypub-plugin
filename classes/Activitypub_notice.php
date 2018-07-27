@@ -81,7 +81,7 @@ class Activitypub_notice extends Managed_DataObject
                         'url'          => $notice->getUrl(),
                         'reply_to'     => empty($notice->reply_to) ? null : Notice::getById($notice->reply_to)->getUri(),
                         'is_local'     => $notice->isLocal(),
-                        'conversation' => intval($notice->conversation),
+                        'conversation' => $notice->getConversationUrl(),
                         'attachment'   => $attachments,
                         'tag'          => $tags
                 ];
