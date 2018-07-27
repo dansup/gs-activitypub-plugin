@@ -149,17 +149,6 @@ class ActivityPubPlugin extends Plugin
         );
 
         $m->connect(
-            ':nickname/remote_follow',
-                    ['action' => 'apRemoteFollow'],
-                    ['nickname' => '[A-Za-z0-9_-]+']
-                );
-
-        $m->connect(
-            'activitypub/authorize_follow',
-                    ['action' => 'apAuthorizeRemoteFollow']
-                );
-
-        $m->connect(
             'user/:id/liked.json',
                     ['action'    => 'apActorLiked'],
                     ['id' => '[0-9]+']
@@ -206,6 +195,32 @@ class ActivityPubPlugin extends Plugin
                                 'Adds ActivityPub Support'];
 
         return true;
+    }
+
+    /**
+     * Dummy string on AccountProfileBlock stating that ActivityPub is active
+     * this is more of a placeholder for eventual useful stuff ._.
+     *
+     * @author Diogo Cordeiro <diogo@fc.up.pt>
+     * @return boolean hook return value
+     */
+    public function onEndShowAccountProfileBlock(HTMLOutputter $out, Profile $profile)
+    {
+        if ($profile->isLocal()) {
+            return true;
+        }
+        try {
+            $aprofile = Activitypub_profile::getKV('profile_id', $profile->id);
+        } catch (NoResultException $e) {
+            // Not a remote ActivityPub_profile! Maybe some other network
+            // that has imported a non-local user (e.g.: OStatus)?
+            return true;
+        }
+
+        $out->elementStart('dl', 'entity_tags activitypub_profile');
+        $out->element('dt', null, _m('ActivityPub'));
+        $out->element('dd', null, _m('Active'));
+        $out->elementEnd('dl');
     }
 
     /**
@@ -401,127 +416,6 @@ class ActivityPubPlugin extends Plugin
         }
 
         return false;
-    }
-
-    /********************************************************
-     *             Remote Subscription Events               *
-     ********************************************************/
-
-    /**
-     * Add in an ActivityPub subscribe button
-     *
-     * @author GNU Social
-     * @param type $output
-     * @param type $profile
-     * @return boolean hook false
-     */
-    public function onStartProfileRemoteSubscribe($output, $profile)
-    {
-        $this->onStartProfileListItemActionElements($output, $profile);
-        return false;
-    }
-
-    /**
-     * Add in an ActivityPub subscribe button
-     *
-     * @author GNU Social
-     * @author Diogo Cordeiro <diogo@fc.up.pt>
-     * @param Action|Widget $item
-     * @return boolean hook return value
-     * @throws ServerException
-     */
-    public function onStartProfileListItemActionElements($item)
-    { // FIXME: This one can accept both an Action and a Widget. Confusing! Refactor to (HTMLOutputter $out, Profile $target)!
-        if (common_logged_in()) {
-            // only non-logged in users get to see the "remote subscribe" form
-            return true;
-        } elseif (!$item->getTarget()->isLocal()) {
-            // we can (for now) only provide remote subscribe forms for local users
-            return true;
-        }
-
-        if ($item instanceof ProfileAction) {
-            $output = $item;
-        } elseif ($item instanceof Widget) {
-            $output = $item->out;
-        } else {
-            // Bad $item class, don't know how to use this for outputting!
-            throw new ServerException('Bad item type for onStartProfileListItemActionElements');
-        }
-
-        // Add an ActivityPub subscribe
-        $output->elementStart('li', 'entity_subscribe');
-        $url = common_local_url(
-            'apRemoteFollow',
-                                array('nickname' => $item->getTarget()->getNickname())
-        );
-        $output->element(
-            'a',
-            array('href' => $url,
-                                    'class' => 'entity_remote_subscribe'),
-                          // TRANS: Link text for a user to subscribe to an OStatus user.
-                         _m('Subscribe')
-        );
-        $output->elementEnd('li');
-
-        return true;
-    }
-
-    /**
-     * Add in an ActivityPub subscribe button
-     *
-     * @author GNU Social
-     * @param type $action
-     * @param string $target
-     * @return boolean hook return value
-     */
-    public function showEntityRemoteSubscribe($action, $target='apRemoteFollow')
-    {
-        if (!$action->getScoped() instanceof Profile) {
-            // early return if we're not logged in
-            return true;
-        }
-
-        if ($action->getScoped()->sameAs($action->getTarget())) {
-            $action->elementStart('div', 'entity_actions');
-            $action->elementStart('p', array('id' => 'entity_remote_subscribe',
-                                             'class' => 'entity_subscribe'));
-            $action->element(
-                'a',
-                array('href' => common_local_url($target),
-                                        'class' => 'entity_remote_subscribe'),
-                                // TRANS: Link text for link to remote subscribe.
-                                _m('Remote')
-            );
-            $action->elementEnd('p');
-            $action->elementEnd('div');
-        }
-    }
-
-    /**
-     * Dummy string on AccountProfileBlock stating that ActivityPub is active
-     * this is more of a placeholder for eventual useful stuff ._.
-     *
-     * @author Diogo Cordeiro <diogo@fc.up.pt>
-     * @return boolean hook return value
-     */
-    public function onEndShowAccountProfileBlock(HTMLOutputter $out, Profile $profile)
-    {
-        if ($profile->isLocal()) {
-            return true;
-        }
-        try {
-            $aprofile = Activitypub_profile::getKV('profile_id', $profile->id);
-        } catch (NoResultException $e) {
-            // Not a remote ActivityPub_profile! Maybe some other network
-            // that has imported a non-local user (e.g.: OStatus)?
-            return true;
-        }
-
-        $out->elementStart('dl', 'entity_tags activitypub_profile');
-        $out->element('dt', null, _m('ActivityPub'));
-        $out->element('dd', null, _m('Active'));
-        $out->elementEnd('dl');
     }
 
     /********************************************************
