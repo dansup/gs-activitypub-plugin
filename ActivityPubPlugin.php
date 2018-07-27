@@ -222,6 +222,188 @@ class ActivityPubPlugin extends Plugin
     }
 
     /********************************************************
+     *                   WebFinger Events                   *
+     ********************************************************/
+
+    /**
+    * Webfinger matches: @user@example.com or even @user--one.george_orwell@1984.biz
+    *
+    * @author GNU Social
+    * @param   string  $text       The text from which to extract webfinger IDs
+    * @param   string  $preMention Character(s) that signals a mention ('@', '!'...)
+    * @return  array   The matching IDs (without $preMention) and each respective position in the given string.
+    */
+    public static function extractWebfingerIds($text, $preMention='@')
+    {
+        $wmatches = array();
+        $result = preg_match_all(
+                    '/(?<!\S)'.preg_quote($preMention, '/').'('.Nickname::WEBFINGER_FMT.')/',
+                                $text,
+                                $wmatches,
+                                PREG_OFFSET_CAPTURE
+                );
+        if ($result === false) {
+            common_log(LOG_ERR, __METHOD__ . ': Error parsing webfinger IDs from text (preg_last_error=='.preg_last_error().').');
+        } elseif (count($wmatches)) {
+            common_debug(sprintf('Found %d matches for WebFinger IDs: %s', count($wmatches), _ve($wmatches)));
+        }
+        return $wmatches[1];
+    }
+
+    /**
+     * Profile URL matches: @example.com/mublog/user
+     *
+     * @author GNU Social
+     * @param   string  $text       The text from which to extract URL mentions
+     * @param   string  $preMention Character(s) that signals a mention ('@', '!'...)
+     * @return  array   The matching URLs (without @ or acct:) and each respective position in the given string.
+     */
+    public static function extractUrlMentions($text, $preMention='@')
+    {
+        $wmatches = array();
+        // In the regexp below we need to match / _before_ URL_REGEX_VALID_PATH_CHARS because it otherwise gets merged
+        // with the TLD before (but / is in URL_REGEX_VALID_PATH_CHARS anyway, it's just its positioning that is important)
+        $result = preg_match_all(
+                    '/(?:^|\s+)'.preg_quote($preMention, '/').'('.URL_REGEX_DOMAIN_NAME.'(?:\/['.URL_REGEX_VALID_PATH_CHARS.']*)*)/',
+                                $text,
+                                $wmatches,
+                                PREG_OFFSET_CAPTURE
+                );
+        if ($result === false) {
+            common_log(LOG_ERR, __METHOD__ . ': Error parsing profile URL mentions from text (preg_last_error=='.preg_last_error().').');
+        } elseif (count($wmatches)) {
+            common_debug(sprintf('Found %d matches for profile URL mentions: %s', count($wmatches), _ve($wmatches)));
+        }
+        return $wmatches[1];
+    }
+
+    /**
+     * Add activity+json mimetype on WebFinger
+     *
+     * @author Diogo Cordeiro <diogo@fc.up.pt>
+     * @param XML_XRD $xrd
+     * @param Managed_DataObject $object
+     */
+    public function onEndWebFingerProfileLinks(XML_XRD &$xrd, Managed_DataObject $object)
+    {
+        if ($object->isPerson()) {
+            $link = new XML_XRD_Element_Link ('self',
+                     ActivityPubPlugin::actor_uri($object->getProfile()),
+                    'application/activity+json');
+            $xrd->links[] = clone ($link);
+        }
+    }
+
+    /**
+     * Find any explicit remote mentions. Accepted forms:
+     *   Webfinger: @user@example.com
+     *   Profile link: @example.com/mublog/user
+     *
+     * @author GNU Social
+     * @author Diogo Cordeiro <diogo@fc.up.pt>
+     * @param Profile $sender
+     * @param string $text input markup text
+     * @param array &$mention in/out param: set of found mentions
+     * @return boolean hook return value
+     */
+    public function onEndFindMentions(Profile $sender, $text, &$mentions)
+    {
+        $matches = array();
+
+        foreach (self::extractWebfingerIds($text, '@') as $wmatch) {
+            list($target, $pos) = $wmatch;
+            $this->log(LOG_INFO, "Checking webfinger person '$target'");
+            $profile = null;
+            try {
+                $aprofile = Activitypub_profile::ensure_web_finger($target);
+                $profile = $aprofile->local_profile();
+            } catch (Exception $e) {
+                $this->log(LOG_ERR, "Webfinger check failed: " . $e->getMessage());
+                continue;
+            }
+            assert($profile instanceof Profile);
+
+            $displayName = !empty($profile->nickname) && mb_strlen($profile->nickname) < mb_strlen($target)
+                        ? $profile->getNickname()   // TODO: we could do getBestName() or getFullname() here
+                        : $target;
+            $url = $profile->getUri();
+            if (!common_valid_http_url($url)) {
+                $url = $profile->getUrl();
+            }
+            $matches[$pos] = array('mentioned' => array($profile),
+                                               'type' => 'mention',
+                                               'text' => $displayName,
+                                               'position' => $pos,
+                                               'length' => mb_strlen($target),
+                                               'url' => $url);
+        }
+
+        foreach (self::extractUrlMentions($text) as $wmatch) {
+            list($target, $pos) = $wmatch;
+            $schemes = array('https', 'http');
+            foreach ($schemes as $scheme) {
+                $url = "$scheme://$target";
+                $this->log(LOG_INFO, "Checking profile address '$url'");
+                try {
+                    $aprofile = Activitypub_profile::get_from_uri($url);
+                    $profile = $aprofile->local_profile();
+                    $displayName = !empty($profile->nickname) && mb_strlen($profile->nickname) < mb_strlen($target) ?
+                                        $profile->nickname : $target;
+                    $matches[$pos] = array('mentioned' => array($profile),
+                                                               'type' => 'mention',
+                                                               'text' => $displayName,
+                                                               'position' => $pos,
+                                                               'length' => mb_strlen($target),
+                                                               'url' => $profile->getUrl());
+                    break;
+                } catch (Exception $e) {
+                    $this->log(LOG_ERR, "Profile check failed: " . $e->getMessage());
+                }
+            }
+        }
+
+        foreach ($mentions as $i => $other) {
+            // If we share a common prefix with a local user, override it!
+            $pos = $other['position'];
+            if (isset($matches[$pos])) {
+                $mentions[$i] = $matches[$pos];
+                unset($matches[$pos]);
+            }
+        }
+        foreach ($matches as $mention) {
+            $mentions[] = $mention;
+        }
+
+        return true;
+    }
+
+    /**
+     * Allow remote profile references to be used in commands:
+     *   sub update@status.net
+     *   whois evan@identi.ca
+     *   reply http://identi.ca/evan hey what's up
+     *
+     * @author GNU Social
+     * @author Diogo Cordeiro <diogo@fc.up.pt>
+     * @param Command $command
+     * @param string $arg
+     * @param Profile &$profile
+     * @return hook return code
+     */
+    public function onStartCommandGetProfile($command, $arg, &$profile)
+    {
+        try {
+            $aprofile = $this->pull_remote_profile($arg);
+            $profile = $aprofile->local_profile();
+        } catch (Exception $e) {
+            // No remote ActivityPub profile found
+            return true;
+        }
+
+        return false;
+    }
+
+    /********************************************************
      *             Remote Subscription Events               *
      ********************************************************/
 
@@ -345,167 +527,6 @@ class ActivityPubPlugin extends Plugin
     /********************************************************
      *                   Discovery Events                   *
      ********************************************************/
-
-    /**
-    * Webfinger matches: @user@example.com or even @user--one.george_orwell@1984.biz
-    *
-    * @author GNU Social
-    * @param   string  $text       The text from which to extract webfinger IDs
-    * @param   string  $preMention Character(s) that signals a mention ('@', '!'...)
-    * @return  array   The matching IDs (without $preMention) and each respective position in the given string.
-    */
-    public static function extractWebfingerIds($text, $preMention='@')
-    {
-        $wmatches = array();
-        $result = preg_match_all(
-                    '/(?<!\S)'.preg_quote($preMention, '/').'('.Nickname::WEBFINGER_FMT.')/',
-                                $text,
-                                $wmatches,
-                                PREG_OFFSET_CAPTURE
-                );
-        if ($result === false) {
-            common_log(LOG_ERR, __METHOD__ . ': Error parsing webfinger IDs from text (preg_last_error=='.preg_last_error().').');
-        } elseif (count($wmatches)) {
-            common_debug(sprintf('Found %d matches for WebFinger IDs: %s', count($wmatches), _ve($wmatches)));
-        }
-        return $wmatches[1];
-    }
-
-    /**
-     * Profile URL matches: @example.com/mublog/user
-     *
-     * @author GNU Social
-     * @param   string  $text       The text from which to extract URL mentions
-     * @param   string  $preMention Character(s) that signals a mention ('@', '!'...)
-     * @return  array   The matching URLs (without @ or acct:) and each respective position in the given string.
-     */
-    public static function extractUrlMentions($text, $preMention='@')
-    {
-        $wmatches = array();
-        // In the regexp below we need to match / _before_ URL_REGEX_VALID_PATH_CHARS because it otherwise gets merged
-        // with the TLD before (but / is in URL_REGEX_VALID_PATH_CHARS anyway, it's just its positioning that is important)
-        $result = preg_match_all(
-                    '/(?:^|\s+)'.preg_quote($preMention, '/').'('.URL_REGEX_DOMAIN_NAME.'(?:\/['.URL_REGEX_VALID_PATH_CHARS.']*)*)/',
-                                $text,
-                                $wmatches,
-                                PREG_OFFSET_CAPTURE
-                );
-        if ($result === false) {
-            common_log(LOG_ERR, __METHOD__ . ': Error parsing profile URL mentions from text (preg_last_error=='.preg_last_error().').');
-        } elseif (count($wmatches)) {
-            common_debug(sprintf('Found %d matches for profile URL mentions: %s', count($wmatches), _ve($wmatches)));
-        }
-        return $wmatches[1];
-    }
-
-    /**
-     * Find any explicit remote mentions. Accepted forms:
-     *   Webfinger: @user@example.com
-     *   Profile link: @example.com/mublog/user
-     *
-     * @author GNU Social
-     * @author Diogo Cordeiro <diogo@fc.up.pt>
-     * @param Profile $sender
-     * @param string $text input markup text
-     * @param array &$mention in/out param: set of found mentions
-     * @return boolean hook return value
-     */
-    public function onEndFindMentions(Profile $sender, $text, &$mentions)
-    {
-        $matches = array();
-
-        foreach (self::extractWebfingerIds($text, '@') as $wmatch) {
-            list($target, $pos) = $wmatch;
-            $this->log(LOG_INFO, "Checking webfinger person '$target'");
-            $profile = null;
-            try {
-                $aprofile = Activitypub_profile::ensure_web_finger($target);
-                $profile = $aprofile->local_profile();
-            } catch (Exception $e) {
-                $this->log(LOG_ERR, "Webfinger check failed: " . $e->getMessage());
-                continue;
-            }
-            assert($profile instanceof Profile);
-
-            $displayName = !empty($profile->nickname) && mb_strlen($profile->nickname) < mb_strlen($target)
-                        ? $profile->getNickname()   // TODO: we could do getBestName() or getFullname() here
-                        : $target;
-            $url = $profile->getUri();
-            if (!common_valid_http_url($url)) {
-                $url = $profile->getUrl();
-            }
-            $matches[$pos] = array('mentioned' => array($profile),
-                                               'type' => 'mention',
-                                               'text' => $displayName,
-                                               'position' => $pos,
-                                               'length' => mb_strlen($target),
-                                               'url' => $url);
-        }
-
-        foreach (self::extractUrlMentions($text) as $wmatch) {
-            list($target, $pos) = $wmatch;
-            $schemes = array('https', 'http');
-            foreach ($schemes as $scheme) {
-                $url = "$scheme://$target";
-                $this->log(LOG_INFO, "Checking profile address '$url'");
-                try {
-                    $aprofile = Activitypub_profile::get_from_uri($url);
-                    $profile = $aprofile->local_profile();
-                    $displayName = !empty($profile->nickname) && mb_strlen($profile->nickname) < mb_strlen($target) ?
-                                        $profile->nickname : $target;
-                    $matches[$pos] = array('mentioned' => array($profile),
-                                                               'type' => 'mention',
-                                                               'text' => $displayName,
-                                                               'position' => $pos,
-                                                               'length' => mb_strlen($target),
-                                                               'url' => $profile->getUrl());
-                    break;
-                } catch (Exception $e) {
-                    $this->log(LOG_ERR, "Profile check failed: " . $e->getMessage());
-                }
-            }
-        }
-
-        foreach ($mentions as $i => $other) {
-            // If we share a common prefix with a local user, override it!
-            $pos = $other['position'];
-            if (isset($matches[$pos])) {
-                $mentions[$i] = $matches[$pos];
-                unset($matches[$pos]);
-            }
-        }
-        foreach ($matches as $mention) {
-            $mentions[] = $mention;
-        }
-
-        return true;
-    }
-
-    /**
-     * Allow remote profile references to be used in commands:
-     *   sub update@status.net
-     *   whois evan@identi.ca
-     *   reply http://identi.ca/evan hey what's up
-     *
-     * @author GNU Social
-     * @author Diogo Cordeiro <diogo@fc.up.pt>
-     * @param Command $command
-     * @param string $arg
-     * @param Profile &$profile
-     * @return hook return code
-     */
-    public function onStartCommandGetProfile($command, $arg, &$profile)
-    {
-        try {
-            $aprofile = $this->pull_remote_profile($arg);
-            $profile = $aprofile->local_profile();
-        } catch (Exception $e) {
-            // No remote ActivityPub profile found
-            return true;
-        }
-
-        return false;
-    }
 
     /**
      * Profile URI for remote profiles.

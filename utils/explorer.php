@@ -115,21 +115,22 @@ class Activitypub_explorer
      * @param string $uri Actor's uri
      * @return boolean success state
      */
-    private function grab_local_user($uri)
+    private function grab_local_user($uri, $online = false)
     {
         // Ensure proper remote URI
         // If an exceptiong ocurrs here it's better to just leave everything
         // break than to continue processing
-        if ($this->ensure_proper_remote_uri($uri)) {
+        if ($online && $this->ensure_proper_remote_uri($uri)) {
             $uri = $this->temp_res["id"];
         }
         try {
             // Try standard ActivityPub route
+            // Is this a filthy little mudblood?
             $aprofile = Activitypub_profile::getKV("uri", $uri);
             if ($aprofile instanceof Activitypub_profile) {
                 $profile = $aprofile->local_profile();
             } else {
-                // This potential local user is not a remote user.
+                // Nope, this potential local user is not a remote user.
                 // Let's check for pure blood!
                 $profile = User::getByNickname($this->temp_res["preferredUsername"])->getProfile();
             }
@@ -139,10 +140,13 @@ class Activitypub_explorer
             unset($this->temp_res); // IMPORTANT to avoid _dangerous_ noise in the Explorer system
             return true;
         } catch (Exception $e) {
-            // We can safely ignore every exception here as we are return false
+            // We can safely ignore every exception here as we are returning false
             // when it fails the lookup for existing local representation
         }
-
+        // If offline grabbing failed, attempt again with online resources
+        if (!$online) {
+            $this->grab_local_user($uri, true);
+        }
         return false;
     }
 
