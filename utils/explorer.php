@@ -203,12 +203,12 @@ class Activitypub_explorer
     private function store_profile($res)
     {
         $aprofile                 = new Activitypub_profile;
-        $aprofile->uri            = $res["id"];
-        $aprofile->nickname       = $res["preferredUsername"];
-        $aprofile->fullname       = $res["name"];
-        $aprofile->bio            = substr($res["summary"], 0, 1000);
-        $aprofile->inboxuri       = $res["inbox"];
-        $aprofile->sharedInboxuri = isset($res["sharedInbox"]) ? $res["sharedInbox"] : $res["inbox"];
+        $aprofile->uri            = $res['id'];
+        $aprofile->nickname       = $res['preferredUsername'];
+        $aprofile->fullname       = $res['name'];
+        $aprofile->bio            = substr($res['summary'], 0, 1000);
+        $aprofile->inboxuri       = $res['inbox'];
+        $aprofile->sharedInboxuri = isset($res['endpoints']['sharedInbox']) ? $res['endpoints']['sharedInbox'] : $res['inbox'];
 
         $aprofile->do_insert();
 
@@ -225,7 +225,7 @@ class Activitypub_explorer
      */
     private static function validate_remote_response($res)
     {
-        if (!isset($res["id"], $res["preferredUsername"], $res["name"], $res["summary"], $res["inbox"])) {
+        if (!isset($res['id'], $res['preferredUsername'], $res['name'], $res['summary'], $res['inbox'])) {
             return false;
         }
 
@@ -247,12 +247,14 @@ class Activitypub_explorer
         $headers[] = 'User-Agent: GNUSocialBot v0.1 - https://gnu.io/social';
         $response  = $client->get($url, $headers);
         if (!$response->isOk()) {
-            throw new Exception("Invalid Actor URL.");
+            throw new Exception('Invalid Actor URL.');
         }
         $res = json_decode($response->getBody(), JSON_UNESCAPED_SLASHES);
         if (self::validate_remote_response($res)) {
-            return array("inbox"       => $res["inbox"],
-                                      "sharedInbox" => isset($res["sharedInbox"]) ? $res["sharedInbox"] : $res["inbox"]);
+            return [
+                'inbox' => $res['inbox'],
+                'sharedInbox' => isset($res['endpoints']['sharedInbox']) ? $res['endpoints']['sharedInbox'] : $res['inbox']
+            ];
         }
 
         return false;

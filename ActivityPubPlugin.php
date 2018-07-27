@@ -302,9 +302,11 @@ class ActivityPubPlugin extends Plugin
     public function onEndWebFingerProfileLinks(XML_XRD &$xrd, Managed_DataObject $object)
     {
         if ($object->isPerson()) {
-            $link = new XML_XRD_Element_Link ('self',
+            $link = new XML_XRD_Element_Link(
+                'self',
                      ActivityPubPlugin::actor_uri($object->getProfile()),
-                    'application/activity+json');
+                    'application/activity+json'
+            );
             $xrd->links[] = clone ($link);
         }
     }

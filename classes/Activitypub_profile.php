@@ -84,39 +84,49 @@ class Activitypub_profile extends Profile
         $uri = ActivityPubPlugin::actor_uri($profile);
         $id = $profile->getID();
         $res = [
-                        '@context'        => [
-                                "https://www.w3.org/ns/activitystreams",
-                                [
-                                        "@language"   => "en"
-                                ]
-                        ],
-                        'id'                => $uri,
-                        'type'              => 'Person',
-                        'preferredUsername' => $profile->getNickname(),
-                        'is_local'          => $profile->isLocal(),
-                        'inbox'             => common_local_url("apActorInbox", array("id" => $id)),
-                        'name'              => $profile->getFullname(),
-                        'followers'         => common_local_url("apActorFollowers", array("id" => $id)),
-                        'followers_count'   => $profile->subscriberCount(),
-                        'following'         => common_local_url("apActorFollowing", array("id" => $id)),
-                        'following_count'   => $profile->subscriptionCount(),
-                        'liked'             => common_local_url("apActorLiked", array("id" => $id)),
-                        'liked_count'       => Fave::countByProfile($profile),
-                        'summary'           => ($desc = $profile->getDescription()) == null ? "" : $desc,
-                        'icon'              => [
-                                'type'   => 'Image',
-                                'width'  => AVATAR_PROFILE_SIZE,
-                                'height' => AVATAR_PROFILE_SIZE,
-                                'url'    => $profile->avatarUrl(AVATAR_PROFILE_SIZE)
-                        ]
-                ];
+            '@context' => [
+                "https://www.w3.org/ns/activitystreams",
+                "https://w3id.org/security/v1",
+                [
+                    'manuallyApprovesFollowers' => 'as=>manuallyApprovesFollowers',
+                    'sensitive'                 => 'as=>sensitive',
+                    'movedTo'                   => 'as=>movedTo',
+                    'Hashtag'                   => 'as=>Hashtag',
+                    'ostatus'                   => 'http=>//ostatus.org#',
+                    'atomUri'                   => 'ostatus=>atomUri',
+                    'inReplyToAtomUri'          => 'ostatus=>inReplyToAtomUri',
+                    'conversation'              => 'ostatus=>conversation',
+                    'schema'                    => 'http=>//schema.org#',
+                    'PropertyValue'             => 'schema=>PropertyValue',
+                    'value'                     => 'schema=>value'
+                ]
+            ],
+            'id'                => $uri,
+            'type'              => 'Person',
+            'following'         => common_local_url("apActorFollowing", array("id" => $id)),
+            'followers'         => common_local_url("apActorFollowers", array("id" => $id)),
+            'liked'             => common_local_url("apActorLiked", array("id" => $id)),
+            'inbox'             => common_local_url("apActorInbox", array("id" => $id)),
+            'preferredUsername' => $profile->getNickname(),
+            'name'              => $profile->getFullname(),
+            'summary'           => ($desc = $profile->getDescription()) == null ? "" : $desc,
+            'url'               => $profile->getUrl(),
+            'manuallyApprovesFollowers' => false,
+            'tag' => [],
+            'attachment' => [],
+            'icon' => [
+                'type'      => 'Image',
+                'mediaType' => 'image/jpeg',
+                'url'       => $profile->avatarUrl()
+            ]
+        ];
 
         if ($profile->isLocal()) {
-            $res["sharedInbox"] = common_local_url("apSharedInbox", array("id" => $id));
+            $res['endpoints']['sharedInbox'] = common_local_url("apSharedInbox", array("id" => $id));
         } else {
             $aprofile = new Activitypub_profile();
             $aprofile = $aprofile->from_profile($profile);
-            $res["sharedInbox"] = $aprofile->sharedInboxuri;
+            $res['endpoints']['sharedInbox'] = $aprofile->sharedInboxuri;
         }
 
         return $res;
