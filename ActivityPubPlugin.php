@@ -73,13 +73,6 @@ class ActivityPubPlugin extends Plugin
         return actor_uri($profile)."/";
     }
 
-    public static function stripUrlPath($url)
-    {
-        $urlParts = parse_url($url);
-        $newUrl = $urlParts['scheme'] . "://" . $urlParts['host'] . "/";
-        return $newUrl;
-    }
-
     /**
      * Get remote user's ActivityPub_profile via a identifier
      *
