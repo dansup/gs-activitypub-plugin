@@ -91,7 +91,7 @@ class Activitypub_explorer
     private function ensure_proper_remote_uri($url)
     {
         $client    = new HTTPClient();
-        $headers   = array();
+        $headers   = [];
         $headers[] = 'Accept: application/ld+json; profile="https://www.w3.org/ns/activitystreams"';
         $headers[] = 'User-Agent: GNUSocialBot v0.1 - https://gnu.io/social';
         $response  = $client->get($url, $headers);
@@ -118,35 +118,29 @@ class Activitypub_explorer
     private function grab_local_user($uri, $online = false)
     {
         // Ensure proper remote URI
-        // If an exceptiong ocurrs here it's better to just leave everything
+        // If an exception occurs here it's better to just leave everything
         // break than to continue processing
         if ($online && $this->ensure_proper_remote_uri($uri)) {
             $uri = $this->temp_res["id"];
         }
-        try {
-            // Try standard ActivityPub route
-            // Is this a filthy little mudblood?
-            $aprofile = Activitypub_profile::getKV("uri", $uri);
-            if ($aprofile instanceof Activitypub_profile) {
-                $profile = $aprofile->local_profile();
-            } else {
-                // Nope, this potential local user is not a remote user.
-                // Let's check for pure blood!
-                $profile = User::getByNickname($this->temp_res["preferredUsername"])->getProfile();
-            }
+
+        // Try standard ActivityPub route
+        // Is this a known filthy little mudblood?
+        $aprofile = Activitypub_profile::getKV("uri", $uri);
+        if ($aprofile instanceof Activitypub_profile) {
+            $profile = $aprofile->local_profile();
 
             // We found something!
             $this->discovered_actor_profiles[]= $profile;
             unset($this->temp_res); // IMPORTANT to avoid _dangerous_ noise in the Explorer system
             return true;
-        } catch (Exception $e) {
-            // We can safely ignore every exception here as we are returning false
-            // when it fails the lookup for existing local representation
         }
+
         // If offline grabbing failed, attempt again with online resources
         if (!$online) {
-            $this->grab_local_user($uri, true);
+            return $this->grab_local_user($uri, true);
         }
+
         return false;
     }
 
@@ -202,6 +196,7 @@ class Activitypub_explorer
      */
     private function store_profile($res)
     {
+        // ActivityPub Profile
         $aprofile                 = new Activitypub_profile;
         $aprofile->uri            = $res['id'];
         $aprofile->nickname       = $res['preferredUsername'];
@@ -211,8 +206,15 @@ class Activitypub_explorer
         $aprofile->sharedInboxuri = isset($res['endpoints']['sharedInbox']) ? $res['endpoints']['sharedInbox'] : $res['inbox'];
 
         $aprofile->do_insert();
+        $profile = $aprofile->local_profile();
 
-        return $aprofile->local_profile();
+        // Public Key
+        $apRSA = new Activitypub_rsa();
+        $apRSA->profile_id = $profile->getID();
+        $apRSA->public_key = $res['publicKey']['publicKeyPem'];
+        $apRSA->store_keys();
+
+        return $profile;
     }
 
     /**
@@ -225,7 +227,7 @@ class Activitypub_explorer
      */
     private static function validate_remote_response($res)
     {
-        if (!isset($res['id'], $res['preferredUsername'], $res['name'], $res['summary'], $res['inbox'])) {
+        if (!isset($res['id'], $res['preferredUsername'], $res['name'], $res['summary'], $res['inbox'], $res['publicKey']['publicKeyPem'])) {
             return false;
         }
 

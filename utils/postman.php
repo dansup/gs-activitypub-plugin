@@ -52,7 +52,7 @@ class Activitypub_postman
      * Create a postman to deliver something to someone
      *
      * @author Diogo Cordeiro <diogo@fc.up.pt>
-     * @param Profile of sender
+     * @param Profile $from Profile of sender
      * @param Activitypub_profile $to array of destinataries
      */
     public function __construct($from, $to = [])
@@ -73,7 +73,7 @@ class Activitypub_postman
      */
     public function follow()
     {
-        $data = Activitypub_follow::follow_to_array($this->actor->getUrl(), $this->to[0]->getUrl());
+        $data = Activitypub_follow::follow_to_array(ActivityPubPlugin::actor_uri($this->actor), $this->to[0]->getUrl());
         $this->client->setBody(json_encode($data));
         $res = $this->client->post($this->to[0]->get_inbox(), $this->headers);
         $res_body = json_decode($res->getBody());
@@ -102,8 +102,8 @@ class Activitypub_postman
     {
         $data = Activitypub_undo::undo_to_array(
                          Activitypub_follow::follow_to_array(
-                             $this->actor->getUrl(),
-                                                              $this->to[0]->getUrl()
+                             ActivityPubPlugin::actor_uri($this->actor),
+                             $this->to[0]->getUrl()
                          )
                         );
         $this->client->setBody(json_encode($data));
@@ -130,7 +130,7 @@ class Activitypub_postman
     public function like($notice)
     {
         $data = Activitypub_like::like_to_array(
-                    $this->actor->getUrl(),
+                    ActivityPubPlugin::actor_uri($this->actor),
                          Activitypub_notice::notice_to_array($notice)
                         );
         $this->client->setBody(json_encode($data));
@@ -149,10 +149,10 @@ class Activitypub_postman
     {
         $data = Activitypub_undo::undo_to_array(
                          Activitypub_like::like_to_array(
-                             $this->actor->getUrl(),
+                             ActivityPubPlugin::actor_uri($this->actor),
                           Activitypub_notice::notice_to_array($notice)
                          )
-                        );
+                );
         $this->client->setBody(json_encode($data));
         foreach ($this->to_inbox() as $inbox) {
             $this->client->post($inbox, $this->headers);
@@ -169,9 +169,9 @@ class Activitypub_postman
     {
         $data = Activitypub_create::create_to_array(
                     $notice->getUri(),
-                                                             $this->actor->getUrl(),
-                                                             Activitypub_notice::notice_to_array($notice)
-                                                            );
+                    ActivityPubPlugin::actor_uri($this->actor),
+                    Activitypub_notice::notice_to_array($notice)
+                );
         if (isset($notice->reply_to)) {
             $data["object"]["reply_to"] = $notice->getParent()->getUri();
         }
@@ -190,7 +190,7 @@ class Activitypub_postman
     public function announce($notice)
     {
         $data = Activitypub_announce::announce_to_array(
-                         $this->actor->getUrl(),
+                         ActivityPubPlugin::actor_uri($this->actor),
                          Activitypub_notice::notice_to_array($notice)
                         );
         $this->client->setBody(json_encode($data));
@@ -236,7 +236,12 @@ class Activitypub_postman
     {
         $to_inboxes = array();
         foreach ($this->to as $to_profile) {
-            $to_inboxes[] = $to_profile->get_inbox();
+            $i = $to_profile->get_inbox();
+            // Prevent delivering to self
+            if ($i == [common_local_url('apSharedInbox')]) {
+                continue;
+            }
+            $to_inboxes[] = $i;
         }
 
         return array_unique($to_inboxes);

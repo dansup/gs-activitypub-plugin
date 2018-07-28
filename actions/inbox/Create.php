@@ -44,7 +44,7 @@ if (!isset($data->object->content)) {
 if (!isset($data->object->url)) {
     ActivityPubReturn::error("Object url was not specified.");
 } elseif (!filter_var($data->object->url, FILTER_VALIDATE_URL)) {
-    ActivityPubReturn::error("Invalid Object Url.");
+    ActivityPubReturn::error("Invalid Object URL.");
 }
 if (!isset($data->object->to)) {
     ActivityPubReturn::error("Object To was not specified.");

@@ -232,6 +232,7 @@ class ActivityPubPlugin extends Plugin
     {
         $schema = Schema::get();
         $schema->ensureTable('Activitypub_profile', Activitypub_profile::schemaDef());
+        $schema->ensureTable('Activitypub_rsa', Activitypub_rsa::schemaDef());
         $schema->ensureTable('Activitypub_pending_follow_requests', Activitypub_pending_follow_requests::schemaDef());
         return true;
     }
@@ -250,17 +251,18 @@ class ActivityPubPlugin extends Plugin
     */
     public static function extractWebfingerIds($text, $preMention='@')
     {
-        $wmatches = array();
+        $wmatches = [];
         $result = preg_match_all(
                     '/(?<!\S)'.preg_quote($preMention, '/').'('.Nickname::WEBFINGER_FMT.')/',
-                                $text,
-                                $wmatches,
-                                PREG_OFFSET_CAPTURE
+                    $text,
+                    $wmatches,
+                    PREG_OFFSET_CAPTURE
                 );
         if ($result === false) {
             common_log(LOG_ERR, __METHOD__ . ': Error parsing webfinger IDs from text (preg_last_error=='.preg_last_error().').');
-        } elseif (count($wmatches)) {
-            common_debug(sprintf('Found %d matches for WebFinger IDs: %s', count($wmatches), _ve($wmatches)));
+            return [];
+        } elseif ($n_matches = count($wmatches)) {
+            common_debug(sprintf('Found %d matches for WebFinger IDs: %s', $n_matches, _ve($wmatches)));
         }
         return $wmatches[1];
     }
@@ -497,7 +499,7 @@ class ActivityPubPlugin extends Plugin
      */
     public function onStartSubscribe(Profile $profile, Profile $other)
     {
-        if (!$profile->isLocal() || $other->isLocal()) {
+        if (!$profile->isLocal() && $other->isLocal()) {
             return true;
         }
 
@@ -524,7 +526,7 @@ class ActivityPubPlugin extends Plugin
      */
     public function onStartUnsubscribe(Profile $profile, Profile $other)
     {
-        if (!$profile->isLocal() || $other->isLocal()) {
+        if (!$profile->isLocal() && $other->isLocal()) {
             return true;
         }
 
@@ -723,6 +725,10 @@ class ActivityPubPlugin extends Plugin
         assert($notice->id > 0);        // Ignore if not a valid notice
 
         $profile = Profile::getKV($notice->profile_id);
+
+        if (!$profile->isLocal()) {
+            return true;
+        }
 
         $other = array();
         try {

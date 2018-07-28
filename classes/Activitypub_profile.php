@@ -42,8 +42,6 @@ class Activitypub_profile extends Profile
 {
     public $__table = 'Activitypub_profile';
 
-    protected $_profile = null;
-
     /**
      * Return table definition for Schema setup and DB_DataObject usage.
      *
@@ -83,6 +81,9 @@ class Activitypub_profile extends Profile
     {
         $uri = ActivityPubPlugin::actor_uri($profile);
         $id = $profile->getID();
+        $rsa = new Activitypub_rsa();
+        $public_key = $rsa->ensure_public_key($profile);
+        unset($rsa);
         $res = [
             '@context' => [
                 "https://www.w3.org/ns/activitystreams",
@@ -112,6 +113,11 @@ class Activitypub_profile extends Profile
             'summary'           => ($desc = $profile->getDescription()) == null ? "" : $desc,
             'url'               => $profile->getUrl(),
             'manuallyApprovesFollowers' => false,
+            'publicKey' => [
+                'id'    => $uri."#main-key",
+                'owner' => $uri,
+                'publicKeyPem' => $public_key
+            ],
             'tag' => [],
             'attachment' => [],
             'icon' => [
@@ -122,7 +128,7 @@ class Activitypub_profile extends Profile
         ];
 
         if ($profile->isLocal()) {
-            $res['endpoints']['sharedInbox'] = common_local_url("apSharedInbox", array("id" => $id));
+            $res['endpoints']['sharedInbox'] = common_local_url('apSharedInbox');
         } else {
             $aprofile = new Activitypub_profile();
             $aprofile = $aprofile->from_profile($profile);
@@ -133,7 +139,7 @@ class Activitypub_profile extends Profile
     }
 
     /**
-     * Insert the current objects variables into the database
+     * Insert the current object variables into the database
      *
      * @author Diogo Cordeiro <diogo@fc.up.pt>
      * @access public
